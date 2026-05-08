@@ -25,7 +25,8 @@ const NAV_ITEMS = [
   { label: 'Contacts',   to: '/contacts',   icon: Users },
   { label: 'Meetings',   to: '/meetings',   icon: Calendar },
   { label: 'Tasks',      to: '/tasks',      icon: CheckSquare },
-  { label: 'Analytics',  to: '/analytics',  icon: BarChart2 },
+  { label: 'Analytics',     to: '/analytics',     icon: BarChart2 },
+  { label: 'Notifications', to: '/notifications', icon: Bell      },
 ]
 
 const BOTTOM_ITEMS = [

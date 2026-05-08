@@ -13,10 +13,11 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react'
-import { useAuthStore } from '../../stores/authStore.js'
-import { useUiStore }   from '../../stores/uiStore.js'
-import { Avatar }       from '../ui/Avatar.jsx'
-import { Badge }        from '../ui/Badge.jsx'
+import { useAuthStore }    from '../../stores/authStore.js'
+import { useUiStore }      from '../../stores/uiStore.js'
+import { Avatar }          from '../ui/Avatar.jsx'
+import { Badge }           from '../ui/Badge.jsx'
+import { useNotifications } from '../../hooks/useNotifications.js'
 
 const PAGE_TITLES = {
   '/dashboard': { title: 'Dashboard',  sub: 'Overview of your pipeline' },
@@ -24,8 +25,9 @@ const PAGE_TITLES = {
   '/contacts':  { title: 'Contacts',   sub: 'Your contact directory'    },
   '/meetings':  { title: 'Meetings',   sub: 'Scheduled meetings'        },
   '/tasks':     { title: 'Tasks',      sub: 'Pending tasks & follow-ups'},
-  '/analytics': { title: 'Analytics',  sub: 'Reports & insights'        },
-  '/settings':  { title: 'Settings',   sub: 'Account & preferences'     },
+  '/analytics':     { title: 'Analytics',     sub: 'Reports & insights'        },
+  '/notifications': { title: 'Notifications', sub: 'Activity & alerts'          },
+  '/settings':      { title: 'Settings',      sub: 'Account & preferences'     },
 }
 
 const MOCK_NOTIFICATIONS = [
@@ -81,7 +83,8 @@ export function Navbar() {
   const profileRef = useRef(null)
 
   const pageInfo = PAGE_TITLES[location.pathname] || { title: 'Accord CRM', sub: '' }
-  const unread   = MOCK_NOTIFICATIONS.filter((n) => !n.read).length
+  const { data: notifs = [] } = useNotifications()
+  const unread   = notifs.filter((n) => !n.isRead).length
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -139,10 +142,10 @@ export function Navbar() {
       {/* Right actions */}
       <div className="flex items-center gap-1 ml-auto sm:ml-0">
 
-        {/* Notifications */}
+        {/* Notifications — navigate to full page */}
         <div className="relative" ref={notifRef}>
           <button
-            onClick={toggleNotifications}
+            onClick={() => { closeAllDropdowns(); navigate('/notifications') }}
             className="relative btn-ghost p-2 rounded-xl"
             aria-label="Notifications"
           >
@@ -151,13 +154,6 @@ export function Navbar() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-teal-500 rounded-full ring-2 ring-white" />
             )}
           </button>
-
-          {notificationsOpen && (
-            <NotificationsDropdown
-              notifications={MOCK_NOTIFICATIONS}
-              onClose={closeAllDropdowns}
-            />
-          )}
         </div>
 
         {/* Profile */}
