@@ -1,98 +1,115 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react'
-import { Spinner } from '../../components/ui/Spinner.jsx'
+import { Mail, ArrowLeft, CheckCircle } from 'lucide-react'
+import { useAuthStore } from '../../stores/authStore.js'
+import {
+  AuthField, AuthAlert, AuthSubmitButton,
+} from '../../components/auth/AuthShared.jsx'
 
 export function ForgotPasswordPage() {
   const [email,     setEmail]     = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error,     setError]     = useState('')
+  const [formError, setFormError] = useState('')
+
+  const { forgotPassword, isLoading, error, clearError } = useAuthStore()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
+    setFormError('')
 
-    if (!email.trim()) { setError('Email is required.'); return }
-    if (!/\S+@\S+\.\S+/.test(email)) { setError('Enter a valid email address.'); return }
+    if (!email.trim()) { setFormError('Email is required.'); return }
+    if (!/\S+@\S+\.\S+/.test(email)) { setFormError('Enter a valid email address.'); return }
 
-    setIsLoading(true)
-    await new Promise((r) => setTimeout(r, 1000)) // simulate API
-    setIsLoading(false)
-    setSubmitted(true)
+    const result = await forgotPassword(email.trim().toLowerCase())
+    if (result.success) setSubmitted(true)
   }
 
+  // ── Success state ─────────────────────────────────────────────────────────
   if (submitted) {
     return (
       <div className="p-8 text-center">
-        <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center mx-auto mb-4 ring-1 ring-teal-200">
           <CheckCircle size={28} className="text-teal-500" />
         </div>
-        <h2 className="font-display font-700 text-2xl text-gray-900 mb-2">Check your inbox</h2>
-        <p className="text-sm text-gray-500 mb-6">
-          We sent a password reset link to <strong className="text-gray-700">{email}</strong>.
-          Check your email to proceed.
+        <h2 className="font-display font-bold text-2xl text-gray-900 mb-2">Check your inbox</h2>
+        <p className="text-sm text-gray-500 mb-1">
+          If an account exists for
         </p>
-        <Link to="/login" className="btn-primary inline-flex">
-          <ArrowLeft size={16} />
-          Back to login
-        </Link>
+        <p className="text-sm font-semibold text-gray-800 mb-5">{email}</p>
+        <p className="text-sm text-gray-500 mb-6">
+          you'll receive a password reset link shortly.
+        </p>
+
+        <div className="space-y-3">
+          <Link to="/login" className="btn-primary inline-flex w-full justify-center">
+            Back to sign in
+          </Link>
+          <button
+            type="button"
+            onClick={() => { setSubmitted(false); setEmail(''); clearError() }}
+            className="btn-secondary w-full text-sm"
+          >
+            Try a different email
+          </button>
+        </div>
       </div>
     )
   }
 
+  const displayError = formError || error
+
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h2 className="font-display font-700 text-2xl text-gray-900 mb-1.5">
-          Reset password
+      {/* Heading */}
+      <div className="mb-7">
+        <h2 className="font-display font-bold text-2xl text-gray-900 mb-1.5">
+          Forgot your password?
         </h2>
         <p className="text-sm text-gray-500">
-          Enter your work email and we'll send you a reset link.
+          No worries — enter your work email and we'll send a reset link.
         </p>
       </div>
 
-      {error && (
-        <div className="mb-4 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">
-          <AlertCircle size={16} className="flex-shrink-0" />
-          <span>{error}</span>
-        </div>
+      {/* Error */}
+      {displayError && (
+        <AuthAlert type="error" message={displayError} className="mb-4" />
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <div>
-          <label htmlFor="email" className="label-base">Email address</label>
-          <div className="relative">
-            <Mail
-              size={16}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-            />
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError('') }}
-              placeholder="you@company.com"
-              className="input-base pl-10"
-              disabled={isLoading}
-            />
-          </div>
-        </div>
+        <AuthField label="Email address" id="email" icon={Mail}>
+          <input
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setFormError(''); clearError() }}
+            placeholder="you@company.com"
+            disabled={isLoading}
+          />
+        </AuthField>
 
-        <button type="submit" disabled={isLoading} className="btn-primary w-full">
-          {isLoading ? (
-            <><Spinner size="sm" color="white" /><span>Sending…</span></>
-          ) : (
-            <span>Send reset link</span>
-          )}
-        </button>
+        <AuthSubmitButton
+          isLoading={isLoading}
+          label="Send reset link"
+          loadingLabel="Sending…"
+        />
       </form>
 
+      {/* Back link */}
       <div className="mt-6 text-center">
-        <Link to="/login" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium"
+        >
           <ArrowLeft size={14} />
-          Back to login
+          Back to sign in
+        </Link>
+      </div>
+
+      {/* Signup prompt */}
+      <div className="mt-3 text-center text-sm text-gray-500">
+        Don't have an account?{' '}
+        <Link to="/signup" className="text-teal-600 hover:text-teal-700 font-semibold">
+          Sign up free
         </Link>
       </div>
     </div>

@@ -6,9 +6,11 @@ import { AuthLayout }  from './layouts/AuthLayout.jsx'
 import { ProtectedRoute } from './router/ProtectedRoute.jsx'
 import { GuestRoute }     from './router/GuestRoute.jsx'
 
-import { LoginPage }         from './pages/auth/LoginPage.jsx'
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.jsx'
-import { ResetPasswordPage }  from './pages/auth/ResetPasswordPage.jsx'
+import { LoginPage }              from './pages/auth/LoginPage.jsx'
+import { ForgotPasswordPage }      from './pages/auth/ForgotPasswordPage.jsx'
+import { ResetPasswordPage }       from './pages/auth/ResetPasswordPage.jsx'
+import { SignupPage }              from './pages/auth/SignupPage.jsx'
+import { EmailVerificationPage }   from './pages/auth/EmailVerificationPage.jsx'
 
 import { DashboardPage } from './pages/DashboardPage.jsx'
 import { LeadsPage }     from './pages/LeadsPage.jsx'
@@ -36,8 +38,10 @@ export default function App() {
           }
         >
           <Route path="/login"           element={<LoginPage />} />
+          <Route path="/signup"          element={<SignupPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password"  element={<ResetPasswordPage />} />
+          <Route path="/verify-email"    element={<EmailVerificationPage />} />
         </Route>
 
         {/* Protected app routes */}
