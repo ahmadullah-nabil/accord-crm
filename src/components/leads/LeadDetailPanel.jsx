@@ -3,13 +3,15 @@ import {
   X, Phone, Mail, Building2, Calendar, Tag,
   DollarSign, TrendingUp, Pencil, Trash2, Globe,
   Plus, Clock, CheckCircle2, XCircle, RefreshCw,
+  Activity, UserPlus, ArrowRight, FileText, RotateCcw,
 } from 'lucide-react'
 import { useLeadsStore, STAGE_COLORS, PRIORITY_COLORS } from '../../stores/leadsStore.js'
-import { useMeetingsStore }  from '../../stores/meetingsStore.js'
-import { useLeadMeetings }   from '../../hooks/useMeetings.js'
+import { useMeetingsStore }       from '../../stores/meetingsStore.js'
+import { useLeadMeetings }        from '../../hooks/useMeetings.js'
+import { useEntityActivities }    from '../../hooks/useActivities.js'
 import { STATUS_CONFIG, formatMeetingDateTime } from '../../lib/meetingsData.js'
-import { Avatar }            from '../ui/Avatar.jsx'
-import { Skeleton }          from '../ui/Skeleton.jsx'
+import { Avatar }                 from '../ui/Avatar.jsx'
+import { Skeleton }               from '../ui/Skeleton.jsx'
 
 const fmt = (n) =>
   n >= 1000000
@@ -33,6 +35,15 @@ export function LeadDetailPanel() {
     data: linkedMeetings = [],
     isLoading: meetingsLoading,
   } = useLeadMeetings(detailPanelOpen ? selectedLeadId : null)
+
+  // Activity timeline — per-lead chronological event log
+  const {
+    data: activities = [],
+    isLoading: activitiesLoading,
+  } = useEntityActivities(
+    detailPanelOpen ? 'lead' : null,
+    detailPanelOpen ? selectedLeadId : null,
+  )
 
   const handleDelete = () => {
     if (confirm(`Delete lead "${lead?.name}"?`)) {
@@ -209,11 +220,99 @@ export function LeadDetailPanel() {
                   </div>
                 )}
               </Section>
+
+              {/* ── Activity Timeline ──────────────────────────────────────── */}
+              <Section title="Activity Timeline" icon={Activity}>
+                {activitiesLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex gap-2.5">
+                        <Skeleton className="w-7 h-7 rounded-lg flex-shrink-0" />
+                        <div className="flex-1 space-y-1.5">
+                          <Skeleton className="h-3 w-3/4" />
+                          <Skeleton className="h-2.5 w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="text-center py-3 px-3 bg-gray-50 rounded-xl">
+                    <Activity size={16} className="text-gray-300 mx-auto mb-1.5" />
+                    <p className="text-xs text-gray-400">No activity yet</p>
+                    <p className="text-[11px] text-gray-300 mt-0.5">
+                      Events will appear after actions are taken on this lead
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    {activities.map((event, idx) => (
+                      <ActivityEntry
+                        key={event.id}
+                        event={event}
+                        isLast={idx === activities.length - 1}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Section>
             </div>
           </>
         )}
       </div>
     </>
+  )
+}
+
+// ── Activity type → visual config ─────────────────────────────────────────────
+const ACT_CONFIG = {
+  lead_created:       { icon: UserPlus,    bg: 'bg-indigo-50', color: 'text-indigo-600' },
+  lead_stage_changed: { icon: ArrowRight,  bg: 'bg-teal-50',   color: 'text-teal-600'  },
+  lead_updated:       { icon: TrendingUp,  bg: 'bg-gray-100',  color: 'text-gray-500'  },
+  meeting_scheduled:  { icon: Calendar,    bg: 'bg-blue-50',   color: 'text-blue-600'  },
+  meeting_completed:  { icon: CheckCircle2,bg: 'bg-emerald-50',color: 'text-emerald-600'},
+  meeting_updated:    { icon: Calendar,    bg: 'bg-blue-50',   color: 'text-blue-600'  },
+  task_created:       { icon: FileText,    bg: 'bg-amber-50',  color: 'text-amber-600' },
+  task_completed:     { icon: CheckCircle2,bg: 'bg-emerald-50',color: 'text-emerald-600'},
+  task_reopened:      { icon: RotateCcw,   bg: 'bg-gray-100',  color: 'text-gray-500'  },
+}
+
+function relativeTime(iso) {
+  if (!iso) return ''
+  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (diff < 60)        return 'just now'
+  if (diff < 3600)      return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400)     return `${Math.floor(diff / 3600)}h ago`
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`
+  return new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'short' })
+}
+
+function ActivityEntry({ event, isLast }) {
+  const cfg = ACT_CONFIG[event.type] || { icon: Activity, bg: 'bg-gray-100', color: 'text-gray-400' }
+  const Icon = cfg.icon
+
+  return (
+    <div className="flex gap-2.5 group">
+      <div className="flex flex-col items-center flex-shrink-0">
+        <div className={`w-7 h-7 rounded-lg ${cfg.bg} flex items-center justify-center flex-shrink-0`}>
+          <Icon size={12} className={cfg.color} />
+        </div>
+        {!isLast && <div className="w-px flex-1 bg-gray-100 mt-1.5 mb-1" />}
+      </div>
+      <div className={`flex-1 min-w-0 ${!isLast ? 'pb-3' : ''}`}>
+        <p className="text-xs text-gray-700 leading-snug">
+          <span className="font-semibold text-gray-900">{event.actor}</span>
+          {' '}
+          <span className="text-gray-500">{event.action}</span>
+          {event.subject && event.subject !== event.actor && (
+            <><span> </span><span className="font-medium text-gray-800">{event.subject}</span></>
+          )}
+        </p>
+        {event.detail && (
+          <p className="text-[11px] text-gray-400 mt-0.5 truncate">{event.detail}</p>
+        )}
+        <p className="text-[10px] text-gray-300 mt-0.5">{relativeTime(event.occurredAt)}</p>
+      </div>
+    </div>
   )
 }
 
@@ -259,11 +358,14 @@ function MeetingCard({ meeting, onClick }) {
 }
 
 // ── Section ───────────────────────────────────────────────────────────────────
-function Section({ title, children, action }) {
+function Section({ title, icon: Icon, children, action }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{title}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 flex items-center gap-1">
+          {Icon && <Icon size={10} className="text-gray-300" />}
+          {title}
+        </p>
         {action}
       </div>
       <div className="space-y-1.5">{children}</div>

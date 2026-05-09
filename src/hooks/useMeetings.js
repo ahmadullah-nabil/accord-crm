@@ -18,6 +18,8 @@ import {
   patchMeeting,
   removeMeeting,
 } from '../services/meetingsService.js'
+import { logActivity, ACTIVITY_TYPES } from '../services/activityService.js'
+import { useInvalidateActivities }      from './useActivities.js'
 
 // ── Stable query keys ─────────────────────────────────────────────────────────
 export const meetingKeys = {
@@ -51,13 +53,34 @@ export function useMeeting(id) {
 
 // ── useCreateMeeting ──────────────────────────────────────────────────────────
 export function useCreateMeeting() {
-  const qc = useQueryClient()
+  const qc               = useQueryClient()
+  const invalidateAct    = useInvalidateActivities()
 
   return useMutation({
     mutationFn: insertMeeting,
     onSuccess: (newMeeting) => {
       // Prepend to list cache — no extra round-trip
       qc.setQueryData(meetingKeys.all(), (old = []) => [newMeeting, ...old])
+
+      // Log activity then invalidate so feeds refresh
+      const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      logActivity({
+        type:        ACTIVITY_TYPES.MEETING_SCHEDULED,
+        actor,
+        action:      'scheduled meeting',
+        subject:     newMeeting.title,
+        detail:      newMeeting.relatedLabel
+                       ? `Re: ${newMeeting.relatedLabel}`
+                       : newMeeting.scheduledDate ?? '',
+        entityType:  'meeting',
+        entityId:    newMeeting.id,
+        entityLabel: newMeeting.title,
+      }).then(() => {
+        invalidateAct('meeting', newMeeting.id)
+        if (newMeeting.relatedType === 'Lead' && newMeeting.relatedId) {
+          invalidateAct('lead', newMeeting.relatedId)
+        }
+      })
     },
     onError: () => {
       // Re-sync on failure
@@ -68,7 +91,8 @@ export function useCreateMeeting() {
 
 // ── useUpdateMeeting ──────────────────────────────────────────────────────────
 export function useUpdateMeeting() {
-  const qc = useQueryClient()
+  const qc            = useQueryClient()
+  const invalidateAct = useInvalidateActivities()
 
   return useMutation({
     mutationFn: ({ id, data }) => patchMeeting(id, data),
@@ -78,6 +102,21 @@ export function useUpdateMeeting() {
       )
       // Also refresh the detail cache so the drawer shows fresh data
       qc.setQueryData(meetingKeys.detail(updated.id), updated)
+
+      // Log activity if status changed to Completed
+      if (updated.status === 'Completed') {
+        const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+        logActivity({
+          type:        ACTIVITY_TYPES.MEETING_COMPLETED,
+          actor,
+          action:      'completed meeting',
+          subject:     updated.title,
+          detail:      updated.relatedLabel ? `Re: ${updated.relatedLabel}` : '',
+          entityType:  'meeting',
+          entityId:    updated.id,
+          entityLabel: updated.title,
+        }).then(() => invalidateAct('meeting', updated.id))
+      }
     },
     onError: () => {
       qc.invalidateQueries({ queryKey: meetingKeys.all() })

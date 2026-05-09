@@ -18,6 +18,8 @@ import {
   patchTask,
   removeTask,
 } from '../services/tasksService.js'
+import { logActivity, ACTIVITY_TYPES } from '../services/activityService.js'
+import { useInvalidateActivities }      from './useActivities.js'
 
 // ── Stable query keys ─────────────────────────────────────────────────────────
 export const taskKeys = {
@@ -51,13 +53,38 @@ export function useTask(id) {
 
 // ── useCreateTask ─────────────────────────────────────────────────────────────
 export function useCreateTask() {
-  const qc = useQueryClient()
+  const qc            = useQueryClient()
+  const invalidateAct = useInvalidateActivities()
 
   return useMutation({
     mutationFn: insertTask,
     onSuccess: (newTask) => {
       // Prepend to list cache — no extra round-trip
       qc.setQueryData(taskKeys.all(), (old = []) => [newTask, ...old])
+
+      // Fire-and-forget activity log
+      const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      logActivity({
+        type:        ACTIVITY_TYPES.TASK_CREATED,
+        actor,
+        action:      'created task',
+        subject:     newTask.title,
+        detail:      newTask.relatedLabel
+                       ? `Re: ${newTask.relatedLabel}`
+                       : newTask.dueDate ?? '',
+        entityType:  'task',
+        entityId:    newTask.id,
+        entityLabel: newTask.title,
+      }).then(() => {
+        invalidateAct('task', newTask.id)
+        // Also refresh the parent entity timeline (e.g. the meeting this task belongs to)
+        if (newTask.relatedType === 'Meeting' && newTask.relatedId) {
+          invalidateAct('meeting', newTask.relatedId)
+        }
+        if (newTask.relatedType === 'Lead' && newTask.relatedId) {
+          invalidateAct('lead', newTask.relatedId)
+        }
+      })
     },
     onError: () => {
       // Re-sync if the insert failed
@@ -151,7 +178,8 @@ export function useMeetingTasks(meetingId) {
 // Toggles status between 'Completed' and 'Todo'.
 // completedAt is handled server-side by the service's toDb() mapper.
 export function useToggleTaskComplete() {
-  const qc = useQueryClient()
+  const qc            = useQueryClient()
+  const invalidateAct = useInvalidateActivities()
 
   return useMutation({
     mutationFn: ({ id, currentStatus }) =>
@@ -180,12 +208,38 @@ export function useToggleTaskComplete() {
       }
     },
 
-    onSuccess: (updated) => {
+    onSuccess: (updated, { currentStatus }) => {
       // Replace the optimistic record with the real DB response
       qc.setQueryData(taskKeys.all(), (old = []) =>
         old.map((t) => (t.id === updated.id ? updated : t))
       )
       qc.setQueryData(taskKeys.detail(updated.id), updated)
+
+      // Log activity for status transitions to/from Completed
+      const wasCompleted = currentStatus === 'Completed'
+      const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      const actType = wasCompleted
+        ? ACTIVITY_TYPES.TASK_REOPENED
+        : ACTIVITY_TYPES.TASK_COMPLETED
+
+      logActivity({
+        type:        actType,
+        actor,
+        action:      wasCompleted ? 're-opened task' : 'completed task',
+        subject:     updated.title,
+        detail:      updated.relatedLabel ? `Re: ${updated.relatedLabel}` : '',
+        entityType:  'task',
+        entityId:    updated.id,
+        entityLabel: updated.title,
+      }).then(() => {
+        invalidateAct('task', updated.id)
+        if (updated.relatedType === 'Meeting' && updated.relatedId) {
+          invalidateAct('meeting', updated.relatedId)
+        }
+        if (updated.relatedType === 'Lead' && updated.relatedId) {
+          invalidateAct('lead', updated.relatedId)
+        }
+      })
     },
 
     onSettled: (_data, _err, { id }) => {

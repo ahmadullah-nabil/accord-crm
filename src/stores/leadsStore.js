@@ -7,6 +7,7 @@ import {
   patchLeadStage,
   removeLead,
 } from '../services/leadsService.js'
+import { logActivity, ACTIVITY_TYPES } from '../services/activityService.js'
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 //
@@ -107,6 +108,19 @@ export const useLeadsStore = create((set, get) => ({
       })
       // Prepend the real row returned by Supabase (has the real UUID)
       set((s) => ({ leads: [created, ...s.leads] }))
+
+      // Fire-and-forget activity log — never blocks or rolls back on failure
+      const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      logActivity({
+        type:        ACTIVITY_TYPES.LEAD_CREATED,
+        actor,
+        action:      'created lead',
+        subject:     created.company || created.name,
+        detail:      `${created.name} · ${created.stage}`,
+        entityType:  'lead',
+        entityId:    created.id,
+        entityLabel: created.name,
+      })
     } catch (err) {
       console.error('[leadsStore] addLead failed:', err)
       // Re-open the modal so the user can retry
@@ -161,6 +175,19 @@ export const useLeadsStore = create((set, get) => ({
       set((s) => ({
         leads: s.leads.map((l) => (l.id === id ? updated : l)),
       }))
+
+      // Fire-and-forget activity log
+      const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      logActivity({
+        type:        ACTIVITY_TYPES.LEAD_STAGE_CHANGED,
+        actor,
+        action:      `moved to ${stage}`,
+        subject:     updated.company || updated.name,
+        detail:      `${updated.name} · stage: ${stage}`,
+        entityType:  'lead',
+        entityId:    id,
+        entityLabel: updated.name,
+      })
     } catch (err) {
       console.error('[leadsStore] updateStage failed:', err)
       // Reload to restore the actual stage from DB
