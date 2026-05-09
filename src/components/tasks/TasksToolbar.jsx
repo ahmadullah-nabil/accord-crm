@@ -1,7 +1,15 @@
 import React from 'react'
-import { Search, SlidersHorizontal, Plus, X } from 'lucide-react'
-import { useTasksStore }                       from '../../stores/tasksStore.js'
+import { Search, SlidersHorizontal, Plus, X, User, AlertCircle, Clock } from 'lucide-react'
+import { useTasksStore }   from '../../stores/tasksStore.js'
+import { useAuthStore }    from '../../stores/authStore.js'
 import { TASK_STATUSES, TASK_PRIORITIES, TASK_ASSIGNEES } from '../../lib/tasksData.js'
+
+const QUICK_TABS = [
+  { id: 'all',      label: 'All',      icon: null          },
+  { id: 'mine',     label: 'Mine',     icon: User          },
+  { id: 'overdue',  label: 'Overdue',  icon: AlertCircle   },
+  { id: 'upcoming', label: 'Upcoming', icon: Clock         },
+]
 
 export function TasksToolbar({ total, filtered }) {
   const {
@@ -12,11 +20,52 @@ export function TasksToolbar({ total, filtered }) {
     openAddModal,   clearFilters,
   } = useTasksStore()
 
+  const user = useAuthStore((s) => s.user)
+
+  // Derive active quick tab from current filter state
+  const activeQuickTab = (() => {
+    const myName = user?.name ?? ''
+    if (statusFilter === 'Overdue' && assigneeFilter === myName) return 'overdue'
+    if (statusFilter === 'All'     && assigneeFilter === myName && !searchQuery) return 'mine'
+    return 'all'
+  })()
+
   const hasFilters =
     searchQuery || statusFilter !== 'All' || priorityFilter !== 'All' || assigneeFilter !== 'All'
 
+  const applyQuickTab = (tabId) => {
+    clearFilters()
+    if (tabId === 'mine') {
+      setAssigneeFilter(user?.name ?? 'All')
+    } else if (tabId === 'overdue') {
+      setAssigneeFilter(user?.name ?? 'All')
+      setStatusFilter('Overdue')
+    }
+    // 'all' — clearFilters() above is sufficient
+  }
+
   return (
     <div className="card px-4 py-3 space-y-3">
+      {/* Quick tabs */}
+      <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        {QUICK_TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => applyQuickTab(id)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
+              ${activeQuickTab === id
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+              }
+              ${id === 'overdue' && activeQuickTab !== id ? 'hover:text-red-500' : ''}
+            `}
+          >
+            {Icon && <Icon size={11} />}
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Row 1: search + count + add */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -78,7 +127,7 @@ export function TasksToolbar({ total, filtered }) {
         {hasFilters && (
           <button
             onClick={clearFilters}
-            className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium ml-1"
+            className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium"
           >
             <X size={11} /> Clear
           </button>

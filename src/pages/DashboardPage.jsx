@@ -8,6 +8,7 @@ import { ActivityTimeline } from '../components/dashboard/ActivityTimeline.jsx'
 import { TopPerformers }    from '../components/dashboard/TopPerformers.jsx'
 import { QuickActions }     from '../components/dashboard/QuickActions.jsx'
 import { LeadsChart }       from '../components/dashboard/LeadsChart.jsx'
+import { MyWorkspace }      from '../components/dashboard/MyWorkspace.jsx'
 
 function WelcomeBanner({ user }) {
   const hour = new Date().getHours()
@@ -57,6 +58,9 @@ export function DashboardPage() {
 
       {/* Quick Actions */}
       <QuickActions />
+
+      {/* My Workspace — personalized tasks, meetings, pipeline */}
+      <MyWorkspace isLoading={isLoading} />
 
       {/* Revenue + Pipeline */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">

@@ -1,6 +1,7 @@
 import React from 'react'
-import { Search, SlidersHorizontal, Plus, X } from 'lucide-react'
+import { Search, SlidersHorizontal, Plus, X, User } from 'lucide-react'
 import { useMeetingsStore }                    from '../../stores/meetingsStore.js'
+import { useAuthStore }                        from '../../stores/authStore.js'
 import { MEETING_STATUSES, MEETING_TYPES, MEETING_ORGANIZERS } from '../../lib/meetingsData.js'
 
 export function MeetingsToolbar({ total, filtered }) {
@@ -12,14 +13,37 @@ export function MeetingsToolbar({ total, filtered }) {
     openAddModal,    clearFilters,
   } = useMeetingsStore()
 
+  const user = useAuthStore((s) => s.user)
+
+  const isMineActive =
+    organizerFilter === (user?.name ?? '') &&
+    statusFilter === 'All' && typeFilter === 'All' && searchQuery === ''
+
   const hasFilters =
     searchQuery ||
     statusFilter    !== 'All' ||
     typeFilter      !== 'All' ||
     organizerFilter !== 'All'
-
   return (
     <div className="card px-4 py-3 space-y-3">
+      {/* Quick tabs: All / Mine */}
+      <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={clearFilters}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
+            ${!isMineActive ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          All Meetings
+        </button>
+        <button
+          onClick={() => { clearFilters(); setOrganizerFilter(user?.name ?? 'All') }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
+            ${isMineActive ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <User size={11} /> Mine
+        </button>
+      </div>
+
       {/* Row 1: search + count + add */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
