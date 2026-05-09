@@ -1,124 +1,128 @@
 // ─── Auth Service ─────────────────────────────────────────────────────────────
 //
-// This service abstracts all authentication operations.
-// Currently delegates to the mock implementation inside authStore.
+// Pure Supabase Auth operations. This layer:
+//   • has NO knowledge of the Zustand store
+//   • has NO mock data
+//   • is called exclusively by authStore.js
 //
-// TO MIGRATE TO SUPABASE:
-//   1. Set VITE_USE_REAL_BACKEND=true in .env.local
-//   2. Replace the body of each function in the "real" branch with:
-//      supabase.auth.signInWithPassword(), supabase.auth.signUp(), etc.
-//   3. The authStore and all UI components remain completely unchanged.
-//
-// IMPORTANT: This file does NOT call authStore.login() etc. directly.
-// authStore still owns session state. This service is a lower-level
-// layer that can be used independently (e.g. by React Query for session checks).
+// All functions throw on error so authStore can catch and set error state.
 
-import { supabase, USE_REAL_BACKEND } from '../lib/supabaseClient.js'
+import { supabase } from '../lib/supabaseClient.js'
 
-// ── Sign in ────────────────────────────────────────────────────────────────────
-export async function signIn({ email, password }) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-    return data
-  }
-  // Mock: delegate to authStore (called from LoginPage via authStore.login())
-  return null
+// ── Sign in with email + password ─────────────────────────────────────────────
+export async function signInWithPassword(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw error
+  return data // { user, session }
 }
 
-// ── Sign up ───────────────────────────────────────────────────────────────────
-export async function signUp({ email, password, name, company = '' }) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, company },
-        emailRedirectTo: `${import.meta.env.VITE_APP_URL}/verify-email`,
-      },
-    })
-    if (error) throw error
-    return data
-  }
-  return null
+// ── Sign up new user ──────────────────────────────────────────────────────────
+// Creates the Supabase Auth user. The profile row is created by a Postgres
+// trigger (on_auth_user_created). See SUPABASE_MIGRATION.md for the SQL.
+export async function signUpWithEmail({ email, password, name, company = '' }) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { name, company },                           // stored in raw_user_meta_data
+      emailRedirectTo: `${import.meta.env.VITE_APP_URL ?? window.location.origin}/verify-email`,
+    },
+  })
+  if (error) throw error
+  return data // { user, session }
 }
 
 // ── Sign out ──────────────────────────────────────────────────────────────────
 export async function signOut() {
-  if (USE_REAL_BACKEND) {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    return true
-  }
-  return true
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
 }
 
-// ── Get current session ────────────────────────────────────────────────────────
+// ── Get current session (restored from localStorage) ─────────────────────────
+// Returns null if no session exists or it has expired.
 export async function getSession() {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase.auth.getSession()
-    if (error) throw error
-    return data.session
-  }
-  return null
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  return data.session // Session | null
 }
 
-// ── Get current user ─────────────────────────────────────────────────────────
+// ── Get current user (re-validates against Supabase) ─────────────────────────
 export async function getUser() {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase.auth.getUser()
-    if (error) throw error
-    return data.user
-  }
-  return null
+  const { data, error } = await supabase.auth.getUser()
+  if (error) throw error
+  return data.user // User | null
 }
 
-// ── Forgot password ───────────────────────────────────────────────────────────
-export async function forgotPassword(email) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${import.meta.env.VITE_APP_URL}/reset-password`,
-    })
-    if (error) throw error
-    return data
+// ── Fetch user profile from the profiles table ────────────────────────────────
+// Falls back gracefully if the profiles table doesn't exist yet.
+export async function fetchProfile(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
+
+  if (error) {
+    // PGRST116 = row not found; 42P01 = table does not exist
+    if (error.code === 'PGRST116' || error.code === '42P01') return null
+    throw error
   }
-  return { sent: true }
+  return data
 }
 
-// ── Reset password ────────────────────────────────────────────────────────────
-export async function resetPassword(newPassword) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) throw error
-    return data
+// ── Create or update the user's profile row ───────────────────────────────────
+// Called after signup when the trigger isn't set up yet, or to patch data.
+export async function upsertProfile({ id, name, company, email }) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert(
+      { id, name, department: company || null, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    )
+    .select()
+    .single()
+
+  if (error) {
+    // If the profiles table doesn't exist, fail silently
+    if (error.code === '42P01') return null
+    throw error
   }
-  return { updated: true }
+  return data
+}
+
+// ── Send password reset email ─────────────────────────────────────────────────
+export async function sendPasswordResetEmail(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${import.meta.env.VITE_APP_URL ?? window.location.origin}/reset-password`,
+  })
+  if (error) throw error
+  // Intentionally no return value — avoid user enumeration in calling code
+}
+
+// ── Update password (requires active session) ─────────────────────────────────
+export async function updatePassword(newPassword) {
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw error
+  return data.user
 }
 
 // ── Resend verification email ─────────────────────────────────────────────────
 export async function resendVerificationEmail(email) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: {
-        emailRedirectTo: `${import.meta.env.VITE_APP_URL}/verify-email`,
-      },
-    })
-    if (error) throw error
-    return data
-  }
-  return { sent: true }
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: `${import.meta.env.VITE_APP_URL ?? window.location.origin}/verify-email`,
+    },
+  })
+  if (error) throw error
 }
 
-// ── Subscribe to auth state changes ───────────────────────────────────────────
-// Call this in main.jsx or a top-level provider to reactively update authStore
-// when Supabase fires auth events (TOKEN_REFRESHED, SIGNED_OUT, etc.)
+// ── Subscribe to auth state changes ──────────────────────────────────────────
+// Returns an unsubscribe function. Call this once in main.jsx.
+// Events fired: INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED,
+//               USER_UPDATED, PASSWORD_RECOVERY
 export function onAuthStateChange(callback) {
-  if (USE_REAL_BACKEND) {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(callback)
-    return subscription
-  }
-  // Mock: no-op — authStore manages state directly
-  return { unsubscribe: () => {} }
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(callback)
+  return () => subscription.unsubscribe()
 }

@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, CheckCircle, ArrowRight, RefreshCw, ArrowLeft } from 'lucide-react'
+import { Mail, CheckCircle, RefreshCw, ArrowLeft } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore.js'
 import { AuthAlert }    from '../../components/auth/AuthShared.jsx'
 import { Spinner }      from '../../components/ui/Spinner.jsx'
@@ -8,6 +8,7 @@ import { Spinner }      from '../../components/ui/Spinner.jsx'
 export function EmailVerificationPage() {
   const {
     pendingVerificationEmail,
+    isAuthenticated,
     verifyEmail,
     resendVerification,
     clearPendingVerification,
@@ -19,7 +20,33 @@ export function EmailVerificationPage() {
   const [alert,    setAlert]    = useState(null)
   const navigate = useNavigate()
 
-  // If no pending email (e.g. navigated here directly), redirect to login
+  // If Supabase already verified the email (user clicked the link and
+  // detectSessionInUrl picked up the token), the store will have
+  // isAuthenticated=true. Redirect them straight into the app.
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
+
+  // Periodically poll for session in case the user verifies in another tab.
+  // verifyEmail() calls getSession() and hydrates the store if found.
+  useEffect(() => {
+    if (!pendingVerificationEmail || verified) return
+
+    const poll = setInterval(async () => {
+      const result = await verifyEmail(pendingVerificationEmail)
+      if (result.success) {
+        setVerified(true)
+        clearInterval(poll)
+        setTimeout(() => navigate('/dashboard', { replace: true }), 1500)
+      }
+    }, 3000) // check every 3 seconds
+
+    return () => clearInterval(poll)
+  }, [pendingVerificationEmail, verified, verifyEmail, navigate])
+
+  // If no pending email and not authenticated, user navigated here directly
   if (!pendingVerificationEmail && !verified) {
     return (
       <div className="p-8 text-center">
@@ -37,22 +64,13 @@ export function EmailVerificationPage() {
     const result = await resendVerification(pendingVerificationEmail)
     if (result.success) {
       setResent(true)
-      setTimeout(() => setResent(false), 4000)
+      setTimeout(() => setResent(false), 5000)
     } else {
       setAlert({ type: 'error', message: 'Could not resend. Please try again.' })
     }
   }
 
-  // Mock "I've verified my email" button — in production this is automatic via Supabase callback
-  const handleSimulateVerify = async () => {
-    setAlert(null)
-    const result = await verifyEmail(pendingVerificationEmail)
-    if (result.success) {
-      setVerified(true)
-      setTimeout(() => navigate('/login'), 2500)
-    }
-  }
-
+  // Shown briefly after the poll detects a verified session
   if (verified) {
     return (
       <div className="p-8 text-center">
@@ -60,7 +78,7 @@ export function EmailVerificationPage() {
           <CheckCircle size={30} className="text-teal-500" />
         </div>
         <h2 className="font-display font-bold text-2xl text-gray-900 mb-2">Email verified!</h2>
-        <p className="text-sm text-gray-500 mb-1">Your account is ready. Redirecting to login…</p>
+        <p className="text-sm text-gray-500 mb-1">Your account is ready. Taking you in…</p>
         <div className="flex justify-center mt-4">
           <Spinner size="sm" />
         </div>
@@ -95,7 +113,7 @@ export function EmailVerificationPage() {
         {[
           'Open the email from AccordCRM',
           'Click the "Verify email" link',
-          'Return here and sign in',
+          'You\'ll be automatically signed in',
         ].map((step, i) => (
           <div key={i} className="flex items-center gap-3">
             <span className="w-6 h-6 rounded-full bg-teal-500 text-white text-xs font-bold
@@ -107,33 +125,17 @@ export function EmailVerificationPage() {
         ))}
       </div>
 
+      {/* Waiting indicator */}
+      <div className="flex items-center justify-center gap-2 mb-5 text-xs text-gray-400">
+        <Spinner size="xs" color="gray" />
+        <span>Waiting for verification…</span>
+      </div>
+
       {/* Alerts */}
       {alert && <AuthAlert type={alert.type} message={alert.message} className="mb-4" />}
       {resent && (
         <AuthAlert type="success" message="Verification email resent! Check your inbox." className="mb-4" />
       )}
-
-      {/* Simulate verify (demo only) */}
-      <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
-        <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider mb-2">
-          Demo mode
-        </p>
-        <p className="text-xs text-amber-600 mb-3">
-          In production a real email is sent. For this demo, click below to simulate verification.
-        </p>
-        <button
-          type="button"
-          onClick={handleSimulateVerify}
-          disabled={isLoading}
-          className="btn-primary w-full py-2 text-sm"
-        >
-          {isLoading ? (
-            <><Spinner size="sm" color="white" /> Verifying…</>
-          ) : (
-            <><CheckCircle size={14} /> Simulate email verification</>
-          )}
-        </button>
-      </div>
 
       {/* Resend */}
       <button

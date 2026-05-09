@@ -1,50 +1,40 @@
 // ─── Supabase Client ──────────────────────────────────────────────────────────
 //
-// This file is the SINGLE place where the Supabase client is created.
-// All services import the `supabase` singleton from here — never create
-// a second client instance elsewhere.
-//
-// TO ACTIVATE: Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local
-// and set VITE_USE_REAL_BACKEND=true.
-//
-// While VITE_USE_REAL_BACKEND=false (the default), the client is created
-// but services will use mock data instead of calling it.
+// Single source of truth for the Supabase client instance.
+// All services and the auth store import `supabase` from here.
+// Never call createClient() anywhere else.
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl  = import.meta.env.VITE_SUPABASE_URL  || 'https://placeholder.supabase.co'
-const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// ── Singleton client ──────────────────────────────────────────────────────────
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(
+    '[AccordCRM] Missing Supabase environment variables.\n' +
+    'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local'
+  )
+}
+
+// ── Singleton ─────────────────────────────────────────────────────────────────
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    // Persist the session in localStorage so the user stays logged in
-    // across page refreshes. When Zustand's authStore takes over session
-    // management you can set this to false.
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    // Storage key — matches the Zustand persist key for consistency
-    storageKey: 'nexus-auth-supabase',
+    persistSession:    true,   // keep session in localStorage across refreshes
+    autoRefreshToken:  true,   // silently refresh the JWT before expiry
+    detectSessionInUrl: true,  // pick up the token from the URL after email links
+    storageKey: 'accord-crm-auth', // localStorage key for the session
   },
   global: {
-    headers: {
-      // Custom header so Supabase logs can identify requests from this app
-      'X-App-Name': 'AccordCRM',
-    },
+    headers: { 'X-App-Name': 'AccordCRM' },
   },
 })
 
-// ── Backend mode flag ─────────────────────────────────────────────────────────
-// Centralised switch: when true, service functions use Supabase;
-// when false (default), they fall through to mock data.
-export const USE_REAL_BACKEND = import.meta.env.VITE_USE_REAL_BACKEND === 'true'
-
-// ── Helper: check if Supabase is properly configured ─────────────────────────
+// ── Utility: check if Supabase is configured with real values ─────────────────
 export function isSupabaseConfigured() {
   return (
-    supabaseUrl !== 'https://placeholder.supabase.co' &&
-    supabaseKey !== 'placeholder-key' &&
-    supabaseUrl.includes('.supabase.co')
+    !!supabaseUrl &&
+    !!supabaseKey &&
+    supabaseUrl.includes('.supabase.co') &&
+    supabaseKey.length > 20
   )
 }

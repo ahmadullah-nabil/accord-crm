@@ -1,20 +1,23 @@
 import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore.js'
+import { PageSpinner }  from '../components/ui/Spinner.jsx'
 
-// GuestRoute: redirects authenticated users to dashboard.
-// Allows access if the user has a pendingVerificationEmail
-// (they signed up but haven't verified yet — still a "guest").
+// GuestRoute: only accessible to unauthenticated users.
+// Shows a spinner while the initial Supabase session is being restored.
 export function GuestRoute({ children }) {
-  const { isAuthenticated, pendingVerificationEmail } = useAuthStore()
+  const { isAuthenticated, isLoading } = useAuthStore()
 
-  // Already logged in → send to dashboard
+  // Wait for initialize() to complete before making a routing decision.
+  // Without this, a logged-in user with a valid Supabase session would flash
+  // the login page before being redirected.
+  if (isLoading) {
+    return <PageSpinner />
+  }
+
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
-
-  // Has a pending verification → allow /verify-email to be accessible
-  // Other auth pages (/login, /signup, etc.) are still accessible to unverified users
 
   return children
 }
