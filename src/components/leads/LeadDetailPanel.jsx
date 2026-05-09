@@ -2,10 +2,14 @@ import React from 'react'
 import {
   X, Phone, Mail, Building2, Calendar, Tag,
   DollarSign, TrendingUp, Pencil, Trash2, Globe,
+  Plus, Clock, CheckCircle2, XCircle, RefreshCw,
 } from 'lucide-react'
 import { useLeadsStore, STAGE_COLORS, PRIORITY_COLORS } from '../../stores/leadsStore.js'
-import { Avatar } from '../ui/Avatar.jsx'
-import { Badge } from '../ui/Badge.jsx'
+import { useMeetingsStore }  from '../../stores/meetingsStore.js'
+import { useLeadMeetings }   from '../../hooks/useMeetings.js'
+import { STATUS_CONFIG, formatMeetingDateTime } from '../../lib/meetingsData.js'
+import { Avatar }            from '../ui/Avatar.jsx'
+import { Skeleton }          from '../ui/Skeleton.jsx'
 
 const fmt = (n) =>
   n >= 1000000
@@ -20,7 +24,15 @@ export function LeadDetailPanel() {
     openEditModal, deleteLead, selectedLeadId,
   } = useLeadsStore()
 
+  const { openAddModalWithPrefill, openDetail: openMeetingDetail } = useMeetingsStore()
+
   const lead = getSelectedLead()
+
+  // Fetch meetings linked to this lead (derived from the React Query meetings cache)
+  const {
+    data: linkedMeetings = [],
+    isLoading: meetingsLoading,
+  } = useLeadMeetings(detailPanelOpen ? selectedLeadId : null)
 
   const handleDelete = () => {
     if (confirm(`Delete lead "${lead?.name}"?`)) {
@@ -28,14 +40,22 @@ export function LeadDetailPanel() {
     }
   }
 
+  const handleScheduleMeeting = () => {
+    if (!lead) return
+    openAddModalWithPrefill({
+      relatedType:  'Lead',
+      relatedId:    lead.id,
+      relatedLabel: `${lead.name} — ${lead.company}`,
+      title:        `Meeting — ${lead.company}`,
+      participants: lead.name ? [lead.name] : [],
+    })
+  }
+
   return (
     <>
       {/* Overlay */}
       {detailPanelOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-30"
-          onClick={closeDetail}
-        />
+        <div className="fixed inset-0 bg-black/20 z-30" onClick={closeDetail} />
       )}
 
       {/* Panel */}
@@ -49,7 +69,7 @@ export function LeadDetailPanel() {
         {!lead ? null : (
           <>
             {/* Header */}
-            <div className="flex items-start justify-between p-5 border-b border-gray-100">
+            <div className="flex items-start justify-between p-5 border-b border-gray-100 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <Avatar name={lead.name} size="lg" />
                 <div>
@@ -64,18 +84,21 @@ export function LeadDetailPanel() {
                 <button
                   onClick={() => openEditModal(lead.id)}
                   className="p-2 rounded-xl text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-colors"
+                  title="Edit lead"
                 >
                   <Pencil size={15} />
                 </button>
                 <button
                   onClick={handleDelete}
                   className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  title="Delete lead"
                 >
                   <Trash2 size={15} />
                 </button>
                 <button
                   onClick={closeDetail}
                   className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                  title="Close"
                 >
                   <X size={15} />
                 </button>
@@ -143,6 +166,49 @@ export function LeadDetailPanel() {
                   </p>
                 </Section>
               )}
+
+              {/* ── Related Meetings ───────────────────────────────────────── */}
+              <Section
+                title="Meetings"
+                action={
+                  <button
+                    onClick={handleScheduleMeeting}
+                    className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+                    title="Schedule a meeting for this lead"
+                  >
+                    <Plus size={12} />
+                    Schedule
+                  </button>
+                }
+              >
+                {meetingsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-14 w-full rounded-xl" />
+                    <Skeleton className="h-14 w-full rounded-xl" />
+                  </div>
+                ) : linkedMeetings.length === 0 ? (
+                  <div className="text-center py-4 px-3 bg-gray-50 rounded-xl">
+                    <Calendar size={18} className="text-gray-300 mx-auto mb-1.5" />
+                    <p className="text-xs text-gray-400">No meetings scheduled</p>
+                    <button
+                      onClick={handleScheduleMeeting}
+                      className="text-xs text-teal-600 hover:text-teal-700 font-medium mt-1 transition-colors"
+                    >
+                      Schedule one now
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {linkedMeetings.map((meeting) => (
+                      <MeetingCard
+                        key={meeting.id}
+                        meeting={meeting}
+                        onClick={() => openMeetingDetail(meeting.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Section>
             </div>
           </>
         )}
@@ -151,15 +217,61 @@ export function LeadDetailPanel() {
   )
 }
 
-function Section({ title, children }) {
+// ── Related meeting card ──────────────────────────────────────────────────────
+function MeetingCard({ meeting, onClick }) {
+  const sc = STATUS_CONFIG[meeting.status] || STATUS_CONFIG['Scheduled']
+
+  const StatusIcon =
+    meeting.status === 'Completed'   ? CheckCircle2 :
+    meeting.status === 'Cancelled'   ? XCircle      :
+    meeting.status === 'Rescheduled' ? RefreshCw    :
+                                       Clock
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors duration-150 group"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold text-gray-900 leading-snug group-hover:text-teal-700 transition-colors truncate">
+          {meeting.title}
+        </p>
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${sc.color}`}>
+          <StatusIcon size={9} />
+          {sc.label}
+        </span>
+      </div>
+
+      <p className="text-[11px] text-gray-500 mt-1">
+        {meeting.scheduledDate
+          ? formatMeetingDateTime(meeting.scheduledDate, meeting.scheduledTime)
+          : 'No date set'}
+      </p>
+
+      {meeting.organizer && (
+        <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+          <Avatar name={meeting.organizer} size="xs" />
+          {meeting.organizer}
+        </p>
+      )}
+    </button>
+  )
+}
+
+// ── Section ───────────────────────────────────────────────────────────────────
+function Section({ title, children, action }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">{title}</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{title}</p>
+        {action}
+      </div>
       <div className="space-y-1.5">{children}</div>
     </div>
   )
 }
 
+// ── InfoRow ───────────────────────────────────────────────────────────────────
 function InfoRow({ icon: Icon, label, value, href }) {
   return (
     <div className="flex items-center gap-3 py-1.5">

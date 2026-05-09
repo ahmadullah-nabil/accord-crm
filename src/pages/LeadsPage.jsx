@@ -1,12 +1,15 @@
 import React, { useEffect } from 'react'
 import { Target, RefreshCw } from 'lucide-react'
-import { LeadsSummaryBar } from '../components/leads/LeadsSummaryBar.jsx'
-import { LeadsToolbar }   from '../components/leads/LeadsToolbar.jsx'
-import { LeadsTable }     from '../components/leads/LeadsTable.jsx'
-import { LeadsKanban }    from '../components/leads/LeadsKanban.jsx'
-import { LeadDetailPanel } from '../components/leads/LeadDetailPanel.jsx'
-import { LeadFormModal }   from '../components/leads/LeadFormModal.jsx'
-import { useLeadsStore }   from '../stores/leadsStore.js'
+import { LeadsSummaryBar }  from '../components/leads/LeadsSummaryBar.jsx'
+import { LeadsToolbar }     from '../components/leads/LeadsToolbar.jsx'
+import { LeadsTable }       from '../components/leads/LeadsTable.jsx'
+import { LeadsKanban }      from '../components/leads/LeadsKanban.jsx'
+import { LeadDetailPanel }  from '../components/leads/LeadDetailPanel.jsx'
+import { LeadFormModal }    from '../components/leads/LeadFormModal.jsx'
+import { useLeadsStore }    from '../stores/leadsStore.js'
+// Meeting modals are mounted here so they work when triggered from the lead panel
+import { MeetingFormModal }   from '../components/meetings/MeetingFormModal.jsx'
+import { MeetingDetailPanel } from '../components/meetings/MeetingDetailPanel.jsx'
 
 export function LeadsPage() {
   const { viewMode, isLoading, error, initialize } = useLeadsStore()
@@ -62,8 +65,12 @@ export function LeadsPage() {
       {/* Detail slide-in panel */}
       <LeadDetailPanel />
 
-      {/* Add / Edit modal */}
+      {/* Add / Edit lead modal */}
       <LeadFormModal />
+
+      {/* Meeting modals — driven by meetingsStore, triggered from LeadDetailPanel */}
+      <MeetingFormModal />
+      <MeetingDetailPanel />
     </>
   )
 }

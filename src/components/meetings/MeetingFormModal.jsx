@@ -34,6 +34,7 @@ export function MeetingFormModal() {
     addModalOpen, editModalOpen,
     closeAddModal, closeEditModal,
     selectedMeetingId,
+    prefillData,
   } = useMeetingsStore()
 
   const isOpen = addModalOpen || editModalOpen
@@ -57,11 +58,14 @@ export function MeetingFormModal() {
           durationMins: existingMeeting.durationMins ?? 60,
         })
       } else {
-        setForm(EMPTY)
+        // For new meetings: apply any prefill data supplied by the caller
+        // (e.g. from LeadDetailPanel's "Schedule Meeting" button).
+        setForm(prefillData ? { ...EMPTY, ...prefillData } : EMPTY)
       }
       setErrors({})
       setParticipantInput('')
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isEdit, existingMeeting?.id])
 
   const close = () => { isEdit ? closeEditModal() : closeAddModal() }

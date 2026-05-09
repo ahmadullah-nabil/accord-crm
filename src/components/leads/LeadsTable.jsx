@@ -1,6 +1,7 @@
 import React from 'react'
-import { ChevronUp, ChevronDown, ChevronsUpDown, MoreHorizontal, Eye, Pencil, Trash2 } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, MoreHorizontal, Eye, Pencil, Trash2, Calendar } from 'lucide-react'
 import { useLeadsStore, STAGE_COLORS, PRIORITY_COLORS, STAGES } from '../../stores/leadsStore.js'
+import { useMeetingsStore } from '../../stores/meetingsStore.js'
 import { Avatar } from '../ui/Avatar.jsx'
 import { EmptyState } from '../ui/EmptyState.jsx'
 import { Target } from 'lucide-react'
@@ -17,6 +18,8 @@ export function LeadsTable() {
     getFilteredLeads, sortField, sortDir, setSort,
     openDetail, openEditModal, deleteLead, updateStage,
   } = useLeadsStore()
+
+  const { openAddModalWithPrefill } = useMeetingsStore()
 
   const leads = getFilteredLeads()
 
@@ -79,6 +82,13 @@ export function LeadsTable() {
                 onEdit={() => openEditModal(lead.id)}
                 onDelete={() => deleteLead(lead.id)}
                 onStageChange={(stage) => updateStage(lead.id, stage)}
+                onSchedule={() => openAddModalWithPrefill({
+                  relatedType:  'Lead',
+                  relatedId:    lead.id,
+                  relatedLabel: `${lead.name} — ${lead.company}`,
+                  title:        `Meeting — ${lead.company}`,
+                  participants: lead.name ? [lead.name] : [],
+                })}
               />
             ))}
           </tbody>
@@ -93,7 +103,7 @@ export function LeadsTable() {
   )
 }
 
-function LeadRow({ lead, onOpen, onEdit, onDelete, onStageChange }) {
+function LeadRow({ lead, onOpen, onEdit, onDelete, onStageChange, onSchedule }) {
   const [menuOpen, setMenuOpen] = React.useState(false)
   const sc = STAGE_COLORS[lead.stage] || {}
   const pc = PRIORITY_COLORS[lead.priority] || ''
@@ -169,6 +179,7 @@ function LeadRow({ lead, onOpen, onEdit, onDelete, onStageChange }) {
               onOpen={() => { onOpen(); setMenuOpen(false) }}
               onEdit={() => { onEdit(); setMenuOpen(false) }}
               onDelete={() => { if (confirm('Delete this lead?')) { onDelete(); setMenuOpen(false) } }}
+              onSchedule={() => { onSchedule(); setMenuOpen(false) }}
               onClose={() => setMenuOpen(false)}
             />
           )}
@@ -178,7 +189,7 @@ function LeadRow({ lead, onOpen, onEdit, onDelete, onStageChange }) {
   )
 }
 
-function RowMenu({ onOpen, onEdit, onDelete, onClose }) {
+function RowMenu({ onOpen, onEdit, onDelete, onSchedule, onClose }) {
   React.useEffect(() => {
     const handler = () => onClose()
     document.addEventListener('click', handler, true)
@@ -186,10 +197,11 @@ function RowMenu({ onOpen, onEdit, onDelete, onClose }) {
   }, [onClose])
 
   return (
-    <div className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-card-lg border border-gray-100 py-1 min-w-[130px] animate-fade-in">
-      <MenuItem icon={Eye}    label="View"   onClick={onOpen}   />
-      <MenuItem icon={Pencil} label="Edit"   onClick={onEdit}   />
-      <MenuItem icon={Trash2} label="Delete" onClick={onDelete} danger />
+    <div className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-card-lg border border-gray-100 py-1 min-w-[160px] animate-fade-in">
+      <MenuItem icon={Eye}      label="View"             onClick={onOpen}     />
+      <MenuItem icon={Pencil}   label="Edit"             onClick={onEdit}     />
+      <MenuItem icon={Calendar} label="Schedule Meeting" onClick={onSchedule} />
+      <MenuItem icon={Trash2}   label="Delete"           onClick={onDelete}   danger />
     </div>
   )
 }

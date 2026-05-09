@@ -27,12 +27,12 @@ export function MeetingDetailPanel() {
   return (
     <>
       {detailPanelOpen && (
-        <div className="fixed inset-0 bg-black/20 z-30" onClick={closeDetail} />
+        <div className="fixed inset-0 bg-black/30 z-[45]" onClick={closeDetail} />
       )}
 
       <div
         className={`
-          fixed inset-y-0 right-0 z-40 w-[420px] max-w-full bg-white shadow-card-lg
+          fixed inset-y-0 right-0 z-50 w-[420px] max-w-full bg-white shadow-card-lg
           flex flex-col transition-transform duration-300 ease-in-out
           ${detailPanelOpen ? 'translate-x-0' : 'translate-x-full'}
         `}

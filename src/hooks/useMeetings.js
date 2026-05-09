@@ -85,6 +85,32 @@ export function useUpdateMeeting() {
   })
 }
 
+// ── useLeadMeetings — meetings linked to a specific lead ──────────────────────
+// Uses the SAME queryKey as useMeetings() so it shares the React Query cache.
+// When useCreateMeeting / useDeleteMeeting update ['meetings'], this hook's
+// `select` re-runs automatically — no separate fetch, no stale data.
+//
+// relatedType is stored as 'Lead' (capital L) in the DB to match RELATED_TYPES.
+export function useLeadMeetings(leadId) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  return useQuery({
+    queryKey: meetingKeys.all(),           // same key = shared cache entry
+    queryFn:  getMeetings,
+    staleTime: 1000 * 60 * 2,
+    enabled:   isAuthenticated && Boolean(leadId),
+    select: (meetings) =>
+      meetings
+        .filter((m) => m.relatedId === String(leadId) && m.relatedType === 'Lead')
+        .sort((a, b) => {
+          // Newest first: combine date + time for accurate sort
+          const at = `${a.scheduledDate || ''}T${a.scheduledTime || ''}`
+          const bt = `${b.scheduledDate || ''}T${b.scheduledTime || ''}`
+          return bt.localeCompare(at)
+        }),
+  })
+}
+
 // ── useDeleteMeeting ──────────────────────────────────────────────────────────
 export function useDeleteMeeting() {
   const qc = useQueryClient()
