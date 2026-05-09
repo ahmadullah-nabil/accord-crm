@@ -1,90 +1,158 @@
 // ─── Leads Service ────────────────────────────────────────────────────────────
 //
-// TO MIGRATE TO SUPABASE: set VITE_USE_REAL_BACKEND=true and implement
-// the real branch. The leadsStore and all UI components are unchanged.
+// All Supabase CRUD for the leads table.
+// Called by leadsStore.js actions — UI components never import this directly.
+//
+// Field mapping
+// ─────────────
+// App uses camelCase:  createdAt, lastActivity
+// Supabase uses snake: created_at, last_activity
+//
+// value is NUMERIC in Postgres and number in JS — no rename, just a cast.
+// tags is TEXT[] in Postgres and string[] in JS — same shape, no rename.
+//
+// toApp()  DB row   → app shape   (every SELECT passes through this)
+// toDb()   app data → DB columns  (every INSERT / UPDATE passes through this)
+//
+// RLS
+// ───
+// supabase.auth persists the JWT and forwards it on every request.
+// The leads RLS policy requires auth.role() = 'authenticated'.
 
-import { supabase, USE_REAL_BACKEND } from '../lib/supabaseClient.js'
+import { supabase } from '../lib/supabaseClient.js'
 
-// Note: leadsStore.js manages lead data directly (not via a hook/lib pattern).
-// When migrating, the leadsStore actions (addLead, updateLead, deleteLead, etc.)
-// should call this service instead of mutating _leads in-memory.
-// The service layer is defined here and ready to be wired in.
+// ── Field mappers ─────────────────────────────────────────────────────────────
+
+/** Supabase row → app lead shape (camelCase) */
+function toApp(row) {
+  if (!row) return null
+  return {
+    id:           row.id,
+    name:         row.name          ?? '',
+    company:      row.company       ?? '',
+    email:        row.email         ?? '',
+    phone:        row.phone         ?? '',
+    stage:        row.stage         ?? 'New',
+    value:        Number(row.value) || 0,
+    source:       row.source        ?? '',
+    assignee:     row.assignee      ?? '',
+    priority:     row.priority      ?? 'Medium',
+    notes:        row.notes         ?? '',
+    tags:         Array.isArray(row.tags) ? row.tags : [],
+    createdAt:    row.created_at    ?? '',
+    lastActivity: row.last_activity ?? '',
+  }
+}
+
+/** App lead payload → Supabase column names (snake_case) */
+function toDb(payload) {
+  const row = {}
+  if (payload.name     !== undefined) row.name     = payload.name
+  if (payload.company  !== undefined) row.company  = payload.company
+  if (payload.email    !== undefined) row.email    = payload.email
+  if (payload.phone    !== undefined) row.phone    = payload.phone
+  if (payload.stage    !== undefined) row.stage    = payload.stage
+  if (payload.source   !== undefined) row.source   = payload.source
+  if (payload.assignee !== undefined) row.assignee = payload.assignee
+  if (payload.priority !== undefined) row.priority = payload.priority
+  if (payload.notes    !== undefined) row.notes    = payload.notes
+  if (payload.value    !== undefined) row.value    = Number(payload.value) || 0
+  if (payload.tags     !== undefined) {
+    row.tags = Array.isArray(payload.tags) ? payload.tags : []
+  }
+  return row
+}
+
+// ── Fetch all leads ───────────────────────────────────────────────────────────
 
 export async function getLeads() {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (error) throw error
-    return data
-  }
-  // Mock: leadsStore reads from its own in-memory _leads array
-  return null
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*')
+    .order('last_activity', { ascending: false })
+
+  if (error) throw error
+  return (data ?? []).map(toApp)
 }
+
+// ── Fetch one lead ────────────────────────────────────────────────────────────
 
 export async function getLeadById(id) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('id', id)
-      .single()
-    if (error) throw error
-    return data
-  }
-  return null
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) throw error
+  return toApp(data)
 }
+
+// ── Create a lead ─────────────────────────────────────────────────────────────
 
 export async function insertLead(payload) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase
-      .from('leads')
-      .insert(payload)
-      .select()
-      .single()
-    if (error) throw error
-    return data
+  const today = new Date().toISOString().split('T')[0]
+  const row   = {
+    ...toDb(payload),
+    created_at:    today,
+    last_activity: today,
+    // Do NOT include `id` — the DB generates it via gen_random_uuid()
   }
-  return null
+
+  const { data, error } = await supabase
+    .from('leads')
+    .insert(row)
+    .select()
+    .single()
+
+  if (error) throw error
+  return toApp(data)
 }
+
+// ── Update a lead ─────────────────────────────────────────────────────────────
 
 export async function patchLead(id, payload) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase
-      .from('leads')
-      .update(payload)
-      .eq('id', id)
-      .select()
-      .single()
-    if (error) throw error
-    return data
+  const row = {
+    ...toDb(payload),
+    last_activity: new Date().toISOString().split('T')[0],
   }
-  return null
+
+  const { data, error } = await supabase
+    .from('leads')
+    .update(row)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return toApp(data)
 }
 
-export async function removeLead(id) {
-  if (USE_REAL_BACKEND) {
-    const { error } = await supabase
-      .from('leads')
-      .delete()
-      .eq('id', id)
-    if (error) throw error
-    return { id }
-  }
-  return null
-}
+// ── Update stage only (used by kanban drag + inline table dropdown) ───────────
 
 export async function patchLeadStage(id, stage) {
-  if (USE_REAL_BACKEND) {
-    const { data, error } = await supabase
-      .from('leads')
-      .update({ stage, last_activity: new Date().toISOString().split('T')[0] })
-      .eq('id', id)
-      .select()
-      .single()
-    if (error) throw error
-    return data
-  }
-  return null
+  const { data, error } = await supabase
+    .from('leads')
+    .update({
+      stage,
+      last_activity: new Date().toISOString().split('T')[0],
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return toApp(data)
+}
+
+// ── Delete a lead ─────────────────────────────────────────────────────────────
+
+export async function removeLead(id) {
+  const { error } = await supabase
+    .from('leads')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+  return { id }
 }

@@ -1,5 +1,5 @@
-import React from 'react'
-import { Target } from 'lucide-react'
+import React, { useEffect } from 'react'
+import { Target, RefreshCw } from 'lucide-react'
 import { LeadsSummaryBar } from '../components/leads/LeadsSummaryBar.jsx'
 import { LeadsToolbar }   from '../components/leads/LeadsToolbar.jsx'
 import { LeadsTable }     from '../components/leads/LeadsTable.jsx'
@@ -9,7 +9,31 @@ import { LeadFormModal }   from '../components/leads/LeadFormModal.jsx'
 import { useLeadsStore }   from '../stores/leadsStore.js'
 
 export function LeadsPage() {
-  const { viewMode } = useLeadsStore()
+  const { viewMode, isLoading, error, initialize } = useLeadsStore()
+
+  // Fetch leads from Supabase when the page mounts.
+  // initialize() is a no-op if the user is not authenticated.
+  useEffect(() => {
+    initialize()
+  }, [initialize])
+
+  if (error && !isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+        <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center ring-1 ring-red-200">
+          <Target size={20} className="text-red-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-800 mb-1">Failed to load leads</p>
+          <p className="text-xs text-gray-500 max-w-xs">{error}</p>
+        </div>
+        <button onClick={() => initialize()} className="btn-secondary text-sm gap-1.5">
+          <RefreshCw size={14} />
+          Retry
+        </button>
+      </div>
+    )
+  }
 
   return (
     <>
