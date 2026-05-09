@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar } from 'lucide-react'
+import { Calendar, RefreshCw } from 'lucide-react'
 import { useMeetings }           from '../hooks/useMeetings.js'
 import { useMeetingsStore }      from '../stores/meetingsStore.js'
 import { MeetingsSummaryBar }    from '../components/meetings/MeetingsSummaryBar.jsx'
@@ -9,15 +9,27 @@ import { MeetingDetailPanel }    from '../components/meetings/MeetingDetailPanel
 import { MeetingFormModal }      from '../components/meetings/MeetingFormModal.jsx'
 
 export function MeetingsPage() {
-  const { data: allMeetings = [], isLoading, isError } = useMeetings()
+  const { data: allMeetings = [], isLoading, isError, error, refetch } = useMeetings()
   const { applyFilters } = useMeetingsStore()
 
   const filtered = applyFilters(allMeetings)
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <p className="text-sm text-red-500">Failed to load meetings. Please try again.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+        <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center ring-1 ring-red-200">
+          <Calendar size={20} className="text-red-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-800 mb-1">Failed to load meetings</p>
+          <p className="text-xs text-gray-500 max-w-xs">
+            {error?.message ?? 'An unexpected error occurred. Please try again.'}
+          </p>
+        </div>
+        <button onClick={() => refetch()} className="btn-secondary text-sm gap-1.5">
+          <RefreshCw size={14} />
+          Retry
+        </button>
       </div>
     )
   }
