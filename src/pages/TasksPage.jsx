@@ -1,5 +1,5 @@
 import React from 'react'
-import { CheckSquare } from 'lucide-react'
+import { CheckSquare, RefreshCw } from 'lucide-react'
 import { useTasks }           from '../hooks/useTasks.js'
 import { useTasksStore }      from '../stores/tasksStore.js'
 import { TasksSummaryBar }    from '../components/tasks/TasksSummaryBar.jsx'
@@ -9,15 +9,27 @@ import { TaskDetailPanel }    from '../components/tasks/TaskDetailPanel.jsx'
 import { TaskFormModal }      from '../components/tasks/TaskFormModal.jsx'
 
 export function TasksPage() {
-  const { data: allTasks = [], isLoading, isError } = useTasks()
+  const { data: allTasks = [], isLoading, isError, error, refetch } = useTasks()
   const { applyFilters } = useTasksStore()
 
   const filtered = applyFilters(allTasks)
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <p className="text-sm text-red-500">Failed to load tasks. Please try again.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+        <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center ring-1 ring-red-200">
+          <CheckSquare size={20} className="text-red-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-800 mb-1">Failed to load tasks</p>
+          <p className="text-xs text-gray-500 max-w-xs">
+            {error?.message ?? 'An unexpected error occurred. Please try again.'}
+          </p>
+        </div>
+        <button onClick={() => refetch()} className="btn-secondary text-sm gap-1.5">
+          <RefreshCw size={14} />
+          Retry
+        </button>
       </div>
     )
   }

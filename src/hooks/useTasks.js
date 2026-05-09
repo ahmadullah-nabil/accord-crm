@@ -1,89 +1,166 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  fetchTasks,
-  fetchTaskById,
-  createTask,
-  updateTask,
-  deleteTask,
-} from '../lib/tasksData.js'
+// ─── Tasks React Query Hooks ──────────────────────────────────────────────────
+//
+// All data operations for the Tasks module go through these hooks.
+// They delegate to tasksService.js (Supabase) — UI components are unchanged.
+//
+// Auth guard
+// ──────────
+// Every query is gated on isAuthenticated so no request fires before the
+// Supabase session is restored on page load (which would fail RLS and show
+// a spurious error state).
 
-// ── Query keys ────────────────────────────────────────────────────────────────
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '../stores/authStore.js'
+import {
+  getTasks,
+  getTaskById,
+  insertTask,
+  patchTask,
+  removeTask,
+} from '../services/tasksService.js'
+
+// ── Stable query keys ─────────────────────────────────────────────────────────
 export const taskKeys = {
   all:    () => ['tasks'],
   detail: (id) => ['tasks', id],
 }
 
-// ── Hooks ─────────────────────────────────────────────────────────────────────
-
-/** Fetch all tasks */
+// ── useTasks — fetch list ──────────────────────────────────────────────────────
 export function useTasks() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
   return useQuery({
     queryKey: taskKeys.all(),
-    queryFn:  fetchTasks,
+    queryFn:  getTasks,
     staleTime: 1000 * 60 * 2,
+    enabled:   isAuthenticated,
   })
 }
 
-/** Fetch a single task by id */
+// ── useTask — fetch one ────────────────────────────────────────────────────────
 export function useTask(id) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
   return useQuery({
     queryKey: taskKeys.detail(id),
-    queryFn:  () => fetchTaskById(id),
-    enabled:  Boolean(id),
+    queryFn:  () => getTaskById(id),
+    enabled:  isAuthenticated && Boolean(id),
     staleTime: 1000 * 60 * 2,
   })
 }
 
-/** Create a new task */
+// ── useCreateTask ─────────────────────────────────────────────────────────────
 export function useCreateTask() {
   const qc = useQueryClient()
+
   return useMutation({
-    mutationFn: createTask,
+    mutationFn: insertTask,
     onSuccess: (newTask) => {
+      // Prepend to list cache — no extra round-trip
       qc.setQueryData(taskKeys.all(), (old = []) => [newTask, ...old])
     },
+    onError: () => {
+      // Re-sync if the insert failed
+      qc.invalidateQueries({ queryKey: taskKeys.all() })
+    },
   })
 }
 
-/** Update an existing task */
+// ── useUpdateTask ─────────────────────────────────────────────────────────────
 export function useUpdateTask() {
   const qc = useQueryClient()
+
   return useMutation({
-    mutationFn: ({ id, data }) => updateTask(id, data),
+    mutationFn: ({ id, data }) => patchTask(id, data),
     onSuccess: (updated) => {
       qc.setQueryData(taskKeys.all(), (old = []) =>
         old.map((t) => (t.id === updated.id ? updated : t))
       )
+      // Also update detail cache so the drawer shows fresh data
       qc.setQueryData(taskKeys.detail(updated.id), updated)
+    },
+    onError: () => {
+      qc.invalidateQueries({ queryKey: taskKeys.all() })
     },
   })
 }
 
-/** Delete a task */
+// ── useDeleteTask ─────────────────────────────────────────────────────────────
 export function useDeleteTask() {
   const qc = useQueryClient()
+
   return useMutation({
-    mutationFn: deleteTask,
-    onSuccess: (_, id) => {
-      qc.setQueryData(taskKeys.all(), (old = []) => old.filter((t) => t.id !== id))
+    mutationFn: removeTask,
+
+    // Optimistic: remove from list immediately so the UI feels instant
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: taskKeys.all() })
+      const previous = qc.getQueryData(taskKeys.all())
+      qc.setQueryData(taskKeys.all(), (old = []) =>
+        old.filter((t) => t.id !== id)
+      )
+      return { previous }
+    },
+
+    // Roll back on Supabase error
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        qc.setQueryData(taskKeys.all(), context.previous)
+      }
+    },
+
+    // Always clean up detail cache and re-validate list
+    onSettled: (_data, _err, id) => {
       qc.removeQueries({ queryKey: taskKeys.detail(id) })
+      qc.invalidateQueries({ queryKey: taskKeys.all() })
     },
   })
 }
 
-/** Convenience: toggle a task's status between Completed and its previous state */
+// ── useToggleTaskComplete ──────────────────────────────────────────────────────
+// Toggles status between 'Completed' and 'Todo'.
+// completedAt is handled server-side by the service's toDb() mapper.
 export function useToggleTaskComplete() {
   const qc = useQueryClient()
+
   return useMutation({
     mutationFn: ({ id, currentStatus }) =>
-      updateTask(id, {
+      patchTask(id, {
         status: currentStatus === 'Completed' ? 'Todo' : 'Completed',
       }),
+
+    // Optimistic toggle — flip status immediately in the list
+    onMutate: async ({ id, currentStatus }) => {
+      await qc.cancelQueries({ queryKey: taskKeys.all() })
+      const previous = qc.getQueryData(taskKeys.all())
+      const nextStatus = currentStatus === 'Completed' ? 'Todo' : 'Completed'
+      qc.setQueryData(taskKeys.all(), (old = []) =>
+        old.map((t) =>
+          t.id === id
+            ? { ...t, status: nextStatus, completedAt: nextStatus === 'Completed' ? new Date().toISOString().split('T')[0] : null }
+            : t
+        )
+      )
+      return { previous }
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(taskKeys.all(), context.previous)
+      }
+    },
+
     onSuccess: (updated) => {
+      // Replace the optimistic record with the real DB response
       qc.setQueryData(taskKeys.all(), (old = []) =>
         old.map((t) => (t.id === updated.id ? updated : t))
       )
       qc.setQueryData(taskKeys.detail(updated.id), updated)
+    },
+
+    onSettled: (_data, _err, { id }) => {
+      qc.invalidateQueries({ queryKey: taskKeys.all() })
+      qc.invalidateQueries({ queryKey: taskKeys.detail(id) })
     },
   })
 }
