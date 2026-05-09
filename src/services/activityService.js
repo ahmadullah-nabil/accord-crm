@@ -34,6 +34,7 @@ function toApp(row) {
     id:          row.id,
     type:        row.type,
     actor:       row.actor        ?? '',
+    actorId:     row.actor_id     ?? null,
     action:      row.action       ?? '',
     subject:     row.subject      ?? '',
     detail:      row.detail       ?? '',
@@ -49,6 +50,7 @@ function toApp(row) {
 export async function logActivity({
   type,
   actor = '',
+  actorId = null,
   action = '',
   subject = '',
   detail = '',
@@ -60,6 +62,7 @@ export async function logActivity({
     await supabase.from('activities').insert({
       type,
       actor,
+      actor_id:     actorId ? String(actorId) : null,
       action,
       subject,
       detail,

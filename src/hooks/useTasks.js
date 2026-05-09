@@ -20,6 +20,7 @@ import {
 } from '../services/tasksService.js'
 import { logActivity, ACTIVITY_TYPES } from '../services/activityService.js'
 import { useInvalidateActivities }      from './useActivities.js'
+import { ownershipStamp }               from '../lib/users.js'
 
 // ── Stable query keys ─────────────────────────────────────────────────────────
 export const taskKeys = {
@@ -57,16 +58,23 @@ export function useCreateTask() {
   const invalidateAct = useInvalidateActivities()
 
   return useMutation({
-    mutationFn: insertTask,
+    // Wrap insertTask to stamp createdBy from the current auth user
+    mutationFn: (payload) => {
+      const authUser = useAuthStore.getState().user
+      const { createdBy } = ownershipStamp(authUser)
+      return insertTask({ ...payload, createdBy })
+    },
     onSuccess: (newTask) => {
       // Prepend to list cache — no extra round-trip
       qc.setQueryData(taskKeys.all(), (old = []) => [newTask, ...old])
 
-      // Fire-and-forget activity log
-      const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      const authUser = useAuthStore.getState().user
+      const actor    = authUser?.name ?? 'Unknown'
+      const actorId  = authUser?.id   ?? null
       logActivity({
         type:        ACTIVITY_TYPES.TASK_CREATED,
         actor,
+        actorId,
         action:      'created task',
         subject:     newTask.title,
         detail:      newTask.relatedLabel
@@ -77,7 +85,6 @@ export function useCreateTask() {
         entityLabel: newTask.title,
       }).then(() => {
         invalidateAct('task', newTask.id)
-        // Also refresh the parent entity timeline (e.g. the meeting this task belongs to)
         if (newTask.relatedType === 'Meeting' && newTask.relatedId) {
           invalidateAct('meeting', newTask.relatedId)
         }
@@ -217,7 +224,9 @@ export function useToggleTaskComplete() {
 
       // Log activity for status transitions to/from Completed
       const wasCompleted = currentStatus === 'Completed'
-      const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      const authUser = useAuthStore.getState().user
+      const actor    = authUser?.name ?? 'Unknown'
+      const actorId  = authUser?.id   ?? null
       const actType = wasCompleted
         ? ACTIVITY_TYPES.TASK_REOPENED
         : ACTIVITY_TYPES.TASK_COMPLETED
@@ -225,6 +234,7 @@ export function useToggleTaskComplete() {
       logActivity({
         type:        actType,
         actor,
+        actorId,
         action:      wasCompleted ? 're-opened task' : 'completed task',
         subject:     updated.title,
         detail:      updated.relatedLabel ? `Re: ${updated.relatedLabel}` : '',

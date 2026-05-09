@@ -1,6 +1,7 @@
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 // Data-access layer. Replace these async functions with Supabase calls;
 // useMeetings.js hooks require zero changes because they call only these functions.
+import { TEAM_MEMBER_NAMES as _MTG_MEMBER_NAMES } from './users.js'
 
 let _meetings = [
   {
@@ -297,7 +298,8 @@ export async function deleteMeeting(id) {
 
 export const MEETING_STATUSES  = ['Scheduled', 'Completed', 'Cancelled', 'Rescheduled']
 export const MEETING_TYPES     = ['Demo', 'Discovery', 'Negotiation', 'Technical Review', 'Kickoff', 'Proposal', 'Partner Sync', 'Follow-up']
-export const MEETING_ORGANIZERS = ['Alex Rivera', 'Jordan Kim', 'Morgan Chen', 'Taylor Brooks']
+// Derived from the central team registry in lib/users.js
+export const MEETING_ORGANIZERS = _MTG_MEMBER_NAMES
 export const RELATED_TYPES     = ['Lead', 'Contact', 'None']
 export const LOCATION_TYPES    = ['Google Meet', 'Zoom', 'Microsoft Teams', 'On-site', 'Phone Call', 'Other']
 export const DURATION_OPTIONS  = [15, 30, 45, 60, 90, 120]

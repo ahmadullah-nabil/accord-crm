@@ -8,6 +8,7 @@ import {
   removeLead,
 } from '../services/leadsService.js'
 import { logActivity, ACTIVITY_TYPES } from '../services/activityService.js'
+import { ownershipStamp, TEAM_MEMBER_NAMES } from '../lib/users.js'
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 //
@@ -101,19 +102,26 @@ export const useLeadsStore = create((set, get) => ({
     set({ addModalOpen: false })
 
     try {
+      const authUser = useAuthStore.getState().user
+      const { createdBy, ownerId } = ownershipStamp(authUser)
+
       const created = await insertLead({
         ...data,
-        tags:  data.tags  || [],
-        notes: data.notes || '',
+        tags:      data.tags  || [],
+        notes:     data.notes || '',
+        createdBy,
+        ownerId,
       })
       // Prepend the real row returned by Supabase (has the real UUID)
       set((s) => ({ leads: [created, ...s.leads] }))
 
       // Fire-and-forget activity log — never blocks or rolls back on failure
       const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      const actorId = useAuthStore.getState().user?.id ?? null
       logActivity({
         type:        ACTIVITY_TYPES.LEAD_CREATED,
         actor,
+        actorId,
         action:      'created lead',
         subject:     created.company || created.name,
         detail:      `${created.name} · ${created.stage}`,
@@ -178,9 +186,11 @@ export const useLeadsStore = create((set, get) => ({
 
       // Fire-and-forget activity log
       const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      const actorId = useAuthStore.getState().user?.id ?? null
       logActivity({
         type:        ACTIVITY_TYPES.LEAD_STAGE_CHANGED,
         actor,
+        actorId,
         action:      `moved to ${stage}`,
         subject:     updated.company || updated.name,
         detail:      `${updated.name} · stage: ${stage}`,
@@ -264,7 +274,8 @@ export const useLeadsStore = create((set, get) => ({
 export const STAGES     = ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost']
 export const PRIORITIES = ['High', 'Medium', 'Low']
 export const SOURCES    = ['Referral', 'Website', 'Cold Call', 'LinkedIn', 'Partner', 'Trade Show']
-export const ASSIGNEES  = ['Alex Rivera', 'Jordan Kim', 'Morgan Chen', 'Taylor Brooks']
+// Derived from the central team registry in lib/users.js
+export const ASSIGNEES  = TEAM_MEMBER_NAMES
 
 export const STAGE_COLORS = {
   New:         { badge: 'New',         bg: 'bg-blue-500',    light: 'bg-blue-50 text-blue-700'       },

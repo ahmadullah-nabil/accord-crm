@@ -20,6 +20,7 @@ import {
 } from '../services/meetingsService.js'
 import { logActivity, ACTIVITY_TYPES } from '../services/activityService.js'
 import { useInvalidateActivities }      from './useActivities.js'
+import { ownershipStamp }               from '../lib/users.js'
 
 // ── Stable query keys ─────────────────────────────────────────────────────────
 export const meetingKeys = {
@@ -53,20 +54,27 @@ export function useMeeting(id) {
 
 // ── useCreateMeeting ──────────────────────────────────────────────────────────
 export function useCreateMeeting() {
-  const qc               = useQueryClient()
-  const invalidateAct    = useInvalidateActivities()
+  const qc            = useQueryClient()
+  const invalidateAct = useInvalidateActivities()
 
   return useMutation({
-    mutationFn: insertMeeting,
+    // Wrap insertMeeting to stamp createdBy from the current auth user
+    mutationFn: (payload) => {
+      const authUser = useAuthStore.getState().user
+      const { createdBy } = ownershipStamp(authUser)
+      return insertMeeting({ ...payload, createdBy })
+    },
     onSuccess: (newMeeting) => {
       // Prepend to list cache — no extra round-trip
       qc.setQueryData(meetingKeys.all(), (old = []) => [newMeeting, ...old])
 
-      // Log activity then invalidate so feeds refresh
-      const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+      const authUser = useAuthStore.getState().user
+      const actor    = authUser?.name ?? 'Unknown'
+      const actorId  = authUser?.id   ?? null
       logActivity({
         type:        ACTIVITY_TYPES.MEETING_SCHEDULED,
         actor,
+        actorId,
         action:      'scheduled meeting',
         subject:     newMeeting.title,
         detail:      newMeeting.relatedLabel
@@ -105,10 +113,13 @@ export function useUpdateMeeting() {
 
       // Log activity if status changed to Completed
       if (updated.status === 'Completed') {
-        const actor = useAuthStore.getState().user?.name ?? 'Unknown'
+        const authUser = useAuthStore.getState().user
+        const actor   = authUser?.name ?? 'Unknown'
+        const actorId = authUser?.id   ?? null
         logActivity({
           type:        ACTIVITY_TYPES.MEETING_COMPLETED,
           actor,
+          actorId,
           action:      'completed meeting',
           subject:     updated.title,
           detail:      updated.relatedLabel ? `Re: ${updated.relatedLabel}` : '',

@@ -46,6 +46,7 @@ function toApp(row) {
     notes:         row.notes          ?? '',
     tags:          Array.isArray(row.tags) ? row.tags : [],
     createdAt:     row.created_at     ?? '',
+    createdBy:     row.created_by     ?? '',
   }
 }
 
@@ -87,6 +88,8 @@ function toDb(payload) {
 
   if (payload.tags !== undefined)
     row.tags = Array.isArray(payload.tags) ? payload.tags : []
+
+  if (payload.createdBy !== undefined) row.created_by = payload.createdBy ?? ''
 
   return row
 }

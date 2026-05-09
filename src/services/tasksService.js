@@ -40,6 +40,7 @@ function toApp(row) {
     completedAt:  row.completed_at  ?? null,
     createdAt:    row.created_at    ?? '',
     tags:         Array.isArray(row.tags) ? row.tags : [],
+    createdBy:    row.created_by    ?? '',
   }
 }
 
@@ -75,6 +76,8 @@ function toDb(payload) {
   if (payload.completedAt !== undefined && payload.status === undefined) {
     row.completed_at = payload.completedAt
   }
+
+  if (payload.createdBy !== undefined) row.created_by = payload.createdBy ?? ''
 
   return row
 }

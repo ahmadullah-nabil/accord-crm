@@ -41,6 +41,9 @@ function toApp(row) {
     tags:         Array.isArray(row.tags) ? row.tags : [],
     createdAt:    row.created_at    ?? '',
     lastActivity: row.last_activity ?? '',
+    // Ownership fields (nullable — not present on rows created before the patch)
+    createdBy:    row.created_by    ?? '',
+    ownerId:      row.owner_id      ?? null,
   }
 }
 
@@ -60,6 +63,9 @@ function toDb(payload) {
   if (payload.tags     !== undefined) {
     row.tags = Array.isArray(payload.tags) ? payload.tags : []
   }
+  // Ownership fields — only written on insert, never on update
+  if (payload.createdBy !== undefined) row.created_by = payload.createdBy ?? ''
+  if (payload.ownerId   !== undefined) row.owner_id   = payload.ownerId   ?? null
   return row
 }
 

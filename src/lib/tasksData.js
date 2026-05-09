@@ -1,6 +1,7 @@
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 // Data-access layer. Replace these async functions with Supabase calls and the
 // React Query hooks (useTasks.js) require zero changes.
+import { TEAM_MEMBER_NAMES as _TASK_MEMBER_NAMES } from './users.js'
 
 let _tasks = [
   {
@@ -243,7 +244,8 @@ export async function deleteTask(id) {
 
 export const TASK_STATUSES   = ['Todo', 'In Progress', 'Completed', 'Overdue']
 export const TASK_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent']
-export const TASK_ASSIGNEES  = ['Alex Rivera', 'Jordan Kim', 'Morgan Chen', 'Taylor Brooks']
+// Derived from the central team registry in lib/users.js
+export const TASK_ASSIGNEES  = _TASK_MEMBER_NAMES
 export const RELATED_TYPES   = ['Lead', 'Contact', 'Meeting', 'None']
 
 export const STATUS_CONFIG = {
