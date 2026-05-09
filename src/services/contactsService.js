@@ -16,7 +16,8 @@
 // supabase.auth persists the session JWT in localStorage and forwards it on
 // every request. The contacts RLS policy requires auth.role() = 'authenticated'.
 
-import { supabase } from '../lib/supabaseClient.js'
+import { supabase }        from '../lib/supabaseClient.js'
+import { throwClassified } from '../lib/supabaseErrors.js'
 
 // ── Field mappers ─────────────────────────────────────────────────────────────
 
@@ -75,7 +76,7 @@ export async function getContacts() {
     .select('*')
     .order('last_activity', { ascending: false })
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return (data ?? []).map(toApp)
 }
 
@@ -88,7 +89,7 @@ export async function getContactById(id) {
     .eq('id', id)
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -110,7 +111,7 @@ export async function insertContact(payload) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -129,7 +130,7 @@ export async function patchContact(id, payload) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -141,6 +142,6 @@ export async function removeContact(id) {
     .delete()
     .eq('id', id)
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return { id }
 }

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Users } from 'lucide-react'
+import { Users, RefreshCw } from 'lucide-react'
 import { useContacts }            from '../hooks/useContacts.js'
 import { useContactsStore }       from '../stores/contactsStore.js'
 import { ContactsSummaryBar }     from '../components/contacts/ContactsSummaryBar.jsx'
@@ -7,17 +7,36 @@ import { ContactsToolbar }        from '../components/contacts/ContactsToolbar.j
 import { ContactsTable }          from '../components/contacts/ContactsTable.jsx'
 import { ContactDetailPanel }     from '../components/contacts/ContactDetailPanel.jsx'
 import { ContactFormModal }        from '../components/contacts/ContactFormModal.jsx'
+import { UnauthorizedState }      from '../components/ui/UnauthorizedState.jsx'
 
 export function ContactsPage() {
-  const { data: allContacts = [], isLoading, isError } = useContacts()
+  const { data: allContacts = [], isLoading, isError, error, refetch } = useContacts()
   const { applyFilters } = useContactsStore()
 
   const filtered = applyFilters(allContacts)
 
   if (isError) {
+    if (error?.isUnauthorized) {
+      return <UnauthorizedState message={error.message} onRetry={refetch} />
+    }
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <p className="text-sm text-red-500">Failed to load contacts. Please try again.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+        <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center ring-1 ring-red-200">
+          <Users size={20} className="text-red-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-800 mb-1">Failed to load contacts</p>
+          <p className="text-xs text-gray-500 max-w-xs">
+            {error?.message ?? 'An unexpected error occurred. Please try again.'}
+          </p>
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="btn-secondary text-sm gap-1.5"
+        >
+          <RefreshCw size={14} />
+          Retry
+        </button>
       </div>
     )
   }

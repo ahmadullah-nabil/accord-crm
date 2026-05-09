@@ -19,7 +19,8 @@
 // supabase.auth persists the JWT and forwards it on every request.
 // The leads RLS policy requires auth.role() = 'authenticated'.
 
-import { supabase } from '../lib/supabaseClient.js'
+import { supabase }         from '../lib/supabaseClient.js'
+import { throwClassified }  from '../lib/supabaseErrors.js'
 
 // ── Field mappers ─────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ export async function getLeads() {
     .select('*')
     .order('last_activity', { ascending: false })
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return (data ?? []).map(toApp)
 }
 
@@ -90,7 +91,7 @@ export async function getLeadById(id) {
     .eq('id', id)
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -111,7 +112,7 @@ export async function insertLead(payload) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -130,7 +131,7 @@ export async function patchLead(id, payload) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -147,7 +148,7 @@ export async function patchLeadStage(id, stage) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -159,6 +160,6 @@ export async function removeLead(id) {
     .delete()
     .eq('id', id)
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return { id }
 }

@@ -20,7 +20,8 @@
 // supabase.auth persists the JWT and forwards it on every request.
 // The meetings RLS policy requires auth.role() = 'authenticated'.
 
-import { supabase } from '../lib/supabaseClient.js'
+import { supabase }        from '../lib/supabaseClient.js'
+import { throwClassified } from '../lib/supabaseErrors.js'
 
 // ── Field mappers ─────────────────────────────────────────────────────────────
 
@@ -102,7 +103,7 @@ export async function getMeetings() {
     .select('*')
     .order('scheduled_date', { ascending: true, nullsFirst: false })
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return (data ?? []).map(toApp)
 }
 
@@ -115,7 +116,7 @@ export async function getMeetingById(id) {
     .eq('id', id)
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -135,7 +136,7 @@ export async function insertMeeting(payload) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -151,7 +152,7 @@ export async function patchMeeting(id, payload) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -163,6 +164,6 @@ export async function removeMeeting(id) {
     .delete()
     .eq('id', id)
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return { id }
 }

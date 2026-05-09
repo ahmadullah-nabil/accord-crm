@@ -7,6 +7,7 @@ import { TasksToolbar }       from '../components/tasks/TasksToolbar.jsx'
 import { TasksTable }         from '../components/tasks/TasksTable.jsx'
 import { TaskDetailPanel }    from '../components/tasks/TaskDetailPanel.jsx'
 import { TaskFormModal }      from '../components/tasks/TaskFormModal.jsx'
+import { UnauthorizedState }  from '../components/ui/UnauthorizedState.jsx'
 
 export function TasksPage() {
   const { data: allTasks = [], isLoading, isError, error, refetch } = useTasks()
@@ -15,6 +16,9 @@ export function TasksPage() {
   const filtered = applyFilters(allTasks)
 
   if (isError) {
+    if (error?.isUnauthorized) {
+      return <UnauthorizedState message={error.message} onRetry={refetch} />
+    }
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
         <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center ring-1 ring-red-200">

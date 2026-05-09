@@ -7,6 +7,7 @@ import { MeetingsToolbar }       from '../components/meetings/MeetingsToolbar.js
 import { MeetingsTable }         from '../components/meetings/MeetingsTable.jsx'
 import { MeetingDetailPanel }    from '../components/meetings/MeetingDetailPanel.jsx'
 import { MeetingFormModal }      from '../components/meetings/MeetingFormModal.jsx'
+import { UnauthorizedState }     from '../components/ui/UnauthorizedState.jsx'
 // Task modals — mounted here so they work when triggered from MeetingDetailPanel
 import { TaskFormModal }         from '../components/tasks/TaskFormModal.jsx'
 import { TaskDetailPanel }       from '../components/tasks/TaskDetailPanel.jsx'
@@ -18,6 +19,9 @@ export function MeetingsPage() {
   const filtered = applyFilters(allMeetings)
 
   if (isError) {
+    if (error?.isUnauthorized) {
+      return <UnauthorizedState message={error.message} onRetry={refetch} />
+    }
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
         <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center ring-1 ring-red-200">

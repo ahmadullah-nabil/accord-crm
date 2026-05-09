@@ -12,7 +12,8 @@
 //   getActivitiesForEntity() fetches rows for a single lead/meeting/task.
 // • No UPDATE or DELETE — activities are immutable once written.
 
-import { supabase } from '../lib/supabaseClient.js'
+import { supabase }        from '../lib/supabaseClient.js'
+import { throwClassified } from '../lib/supabaseErrors.js'
 
 // ── Activity type constants ────────────────────────────────────────────────────
 export const ACTIVITY_TYPES = {
@@ -83,7 +84,7 @@ export async function getActivities(limit = 50) {
     .order('occurred_at', { ascending: false })
     .limit(limit)
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return (data ?? []).map(toApp)
 }
 
@@ -97,6 +98,6 @@ export async function getActivitiesForEntity(entityType, entityId, limit = 30) {
     .order('occurred_at', { ascending: false })
     .limit(limit)
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return (data ?? []).map(toApp)
 }

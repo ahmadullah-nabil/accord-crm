@@ -19,7 +19,8 @@
 // When status changes AWAY from it     → set completed_at = null
 // toDb() handles both cases.
 
-import { supabase } from '../lib/supabaseClient.js'
+import { supabase }        from '../lib/supabaseClient.js'
+import { throwClassified } from '../lib/supabaseErrors.js'
 
 // ── Field mappers ─────────────────────────────────────────────────────────────
 
@@ -90,7 +91,7 @@ export async function getTasks() {
     .select('*')
     .order('due_date', { ascending: true, nullsFirst: false })
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return (data ?? []).map(toApp)
 }
 
@@ -103,7 +104,7 @@ export async function getTaskById(id) {
     .eq('id', id)
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -123,7 +124,7 @@ export async function insertTask(payload) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -139,7 +140,7 @@ export async function patchTask(id, payload) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return toApp(data)
 }
 
@@ -151,6 +152,6 @@ export async function removeTask(id) {
     .delete()
     .eq('id', id)
 
-  if (error) throw error
+  if (error) throwClassified(error)
   return { id }
 }
