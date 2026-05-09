@@ -24,6 +24,9 @@ function buildUser(supabaseUser, profile) {
     role:          profile?.role          ?? supabaseUser.user_metadata?.role ?? 'Executive',
     avatar:        profile?.avatar_url    ?? supabaseUser.user_metadata?.avatar_url ?? null,
     department:    profile?.department    ?? supabaseUser.user_metadata?.company ?? '',
+    // Hierarchy fields — present after profiles_team_patch.sql is applied
+    managerId:     profile?.manager_id    ?? null,
+    teamId:        profile?.team_id       ?? null,
     emailVerified: supabaseUser.email_confirmed_at !== null,
     createdAt:     supabaseUser.created_at?.split('T')[0] ?? '',
   }
