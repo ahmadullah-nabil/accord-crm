@@ -10,6 +10,9 @@ import { useLeadsStore }    from '../stores/leadsStore.js'
 // Meeting modals are mounted here so they work when triggered from the lead panel
 import { MeetingFormModal }   from '../components/meetings/MeetingFormModal.jsx'
 import { MeetingDetailPanel } from '../components/meetings/MeetingDetailPanel.jsx'
+// Task modals — triggered when creating follow-up tasks from a meeting opened via leads
+import { TaskFormModal }      from '../components/tasks/TaskFormModal.jsx'
+import { TaskDetailPanel }    from '../components/tasks/TaskDetailPanel.jsx'
 
 export function LeadsPage() {
   const { viewMode, isLoading, error, initialize } = useLeadsStore()
@@ -71,6 +74,10 @@ export function LeadsPage() {
       {/* Meeting modals — driven by meetingsStore, triggered from LeadDetailPanel */}
       <MeetingFormModal />
       <MeetingDetailPanel />
+
+      {/* Task modals — triggered when creating follow-up tasks from a meeting in the lead context */}
+      <TaskFormModal />
+      <TaskDetailPanel />
     </>
   )
 }

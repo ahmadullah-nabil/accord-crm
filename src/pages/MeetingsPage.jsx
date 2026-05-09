@@ -7,6 +7,9 @@ import { MeetingsToolbar }       from '../components/meetings/MeetingsToolbar.js
 import { MeetingsTable }         from '../components/meetings/MeetingsTable.jsx'
 import { MeetingDetailPanel }    from '../components/meetings/MeetingDetailPanel.jsx'
 import { MeetingFormModal }      from '../components/meetings/MeetingFormModal.jsx'
+// Task modals — mounted here so they work when triggered from MeetingDetailPanel
+import { TaskFormModal }         from '../components/tasks/TaskFormModal.jsx'
+import { TaskDetailPanel }       from '../components/tasks/TaskDetailPanel.jsx'
 
 export function MeetingsPage() {
   const { data: allMeetings = [], isLoading, isError, error, refetch } = useMeetings()
@@ -61,8 +64,12 @@ export function MeetingsPage() {
       {/* Detail panel */}
       <MeetingDetailPanel />
 
-      {/* Add / Edit modal */}
+      {/* Add / Edit meeting modal */}
       <MeetingFormModal />
+
+      {/* Task modals — driven by tasksStore, triggered from MeetingDetailPanel */}
+      <TaskFormModal />
+      <TaskDetailPanel />
     </>
   )
 }

@@ -17,6 +17,11 @@ export const useTasksStore = create((set, get) => ({
   addModalOpen:    false,
   editModalOpen:   false,
 
+  // ── Prefill: set when opening the add modal from another module ────────────
+  // TaskFormModal reads this when it resets for a new task (!isEdit).
+  // Cleared by closeAddModal().
+  prefillData: null,
+
   // ── Filter actions ─────────────────────────────────────────────────────────
   setSearchQuery:    (q) => set({ searchQuery: q }),
   setStatusFilter:   (s) => set({ statusFilter: s }),
@@ -41,11 +46,28 @@ export const useTasksStore = create((set, get) => ({
   openDetail:     (id) => set({ selectedTaskId: id, detailPanelOpen: true }),
   closeDetail:    ()   => set({ detailPanelOpen: false, selectedTaskId: null }),
 
-  openAddModal:   ()   => set({ addModalOpen: true }),
-  closeAddModal:  ()   => set({ addModalOpen: false }),
+  openAddModal:   ()     => set({ addModalOpen: true,  prefillData: null }),
+  closeAddModal:  ()     => set({ addModalOpen: false, prefillData: null }),
 
   openEditModal:  (id) => set({ editModalOpen: true, selectedTaskId: id }),
   closeEditModal: ()   => set({ editModalOpen: false }),
+
+  // ── openAddModalWithPrefill ────────────────────────────────────────────────
+  // Opens the "Create Follow-up Task" modal pre-populated with data from
+  // another module (e.g. a Meeting). TaskFormModal reads prefillData in its
+  // useEffect when it resets for a new task.
+  //
+  // Usage:
+  //   useTasksStore.getState().openAddModalWithPrefill({
+  //     relatedType:  'Meeting',
+  //     relatedId:    meeting.id,
+  //     relatedLabel: meeting.title,
+  //     title:        `Follow-up: ${meeting.title}`,
+  //     dueDate:      nextWeekDateString,
+  //     assignee:     meeting.organizer,
+  //   })
+  openAddModalWithPrefill: (data) =>
+    set({ addModalOpen: true, prefillData: data }),
 
   // ── Client-side filter + sort (applied over React Query data) ─────────────
   applyFilters: (tasks = []) => {

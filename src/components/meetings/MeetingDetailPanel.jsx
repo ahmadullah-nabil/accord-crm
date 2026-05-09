@@ -2,26 +2,58 @@ import React from 'react'
 import {
   X, Calendar, Clock, MapPin, Users, Link2,
   FileText, Tag, Pencil, Trash2, ExternalLink, Hash,
+  Plus, CheckCircle2, Circle, AlertCircle,
 } from 'lucide-react'
 import { useMeetingsStore }                   from '../../stores/meetingsStore.js'
 import { useMeeting, useDeleteMeeting }       from '../../hooks/useMeetings.js'
 import { STATUS_CONFIG, TYPE_CONFIG, formatMeetingDateTime, daysFromToday } from '../../lib/meetingsData.js'
+import { useTasksStore }                      from '../../stores/tasksStore.js'
+import { useMeetingTasks }                    from '../../hooks/useTasks.js'
+import { STATUS_CONFIG as TASK_STATUS_CONFIG } from '../../lib/tasksData.js'
 import { Avatar }                             from '../ui/Avatar.jsx'
 import { Skeleton, SkeletonText }             from '../ui/Skeleton.jsx'
 
 export function MeetingDetailPanel() {
   const { detailPanelOpen, closeDetail, selectedMeetingId, openEditModal } = useMeetingsStore()
+  const { openAddModalWithPrefill: openTaskWithPrefill, openDetail: openTaskDetail } = useTasksStore()
   const deleteMutation = useDeleteMeeting()
 
   const { data: meeting, isLoading } = useMeeting(
     detailPanelOpen ? selectedMeetingId : null
   )
 
+  const {
+    data: linkedTasks = [],
+    isLoading: tasksLoading,
+  } = useMeetingTasks(detailPanelOpen ? selectedMeetingId : null)
+
   const handleDelete = () => {
     if (!meeting) return
     if (window.confirm(`Delete meeting "${meeting.title}"?`)) {
       deleteMutation.mutate(meeting.id, { onSuccess: closeDetail })
     }
+  }
+
+  // Suggest a due date one week from the meeting's scheduled date (or today)
+  const suggestDueDate = (meeting) => {
+    const base = meeting?.scheduledDate
+      ? new Date(meeting.scheduledDate)
+      : new Date()
+    base.setDate(base.getDate() + 7)
+    return base.toISOString().split('T')[0]
+  }
+
+  const handleCreateFollowUpTask = () => {
+    if (!meeting) return
+    openTaskWithPrefill({
+      relatedType:  'Meeting',
+      relatedId:    meeting.id,
+      relatedLabel: meeting.title,
+      title:        `Follow-up: ${meeting.title}`,
+      dueDate:      suggestDueDate(meeting),
+      assignee:     meeting.organizer || '',
+      priority:     'Medium',
+    })
   }
 
   return (
@@ -42,9 +74,13 @@ export function MeetingDetailPanel() {
         ) : !meeting ? null : (
           <MeetingPanelContent
             meeting={meeting}
+            linkedTasks={linkedTasks}
+            tasksLoading={tasksLoading}
             onClose={closeDetail}
             onEdit={() => openEditModal(meeting.id)}
             onDelete={handleDelete}
+            onCreateTask={handleCreateFollowUpTask}
+            onOpenTask={openTaskDetail}
           />
         )}
       </div>
@@ -53,7 +89,7 @@ export function MeetingDetailPanel() {
 }
 
 // ── Panel content ─────────────────────────────────────────────────────────────
-function MeetingPanelContent({ meeting, onClose, onEdit, onDelete }) {
+function MeetingPanelContent({ meeting, linkedTasks, tasksLoading, onClose, onEdit, onDelete, onCreateTask, onOpenTask }) {
   const sc   = STATUS_CONFIG[meeting.status] || STATUS_CONFIG['Scheduled']
   const tc   = TYPE_CONFIG[meeting.type]     || { color: 'bg-gray-100 text-gray-600' }
   const days = daysFromToday(meeting.scheduledDate)
@@ -243,6 +279,50 @@ function MeetingPanelContent({ meeting, onClose, onEdit, onDelete }) {
           </Section>
         )}
 
+        {/* ── Follow-up Tasks ──────────────────────────────────────────────── */}
+        <SectionWithAction
+          title="Follow-up Tasks"
+          icon={CheckCircle2}
+          action={
+            <button
+              onClick={onCreateTask}
+              className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+              title="Create a follow-up task for this meeting"
+            >
+              <Plus size={12} />
+              Add task
+            </button>
+          }
+        >
+          {tasksLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+            </div>
+          ) : linkedTasks.length === 0 ? (
+            <div className="text-center py-4 px-3 bg-gray-50 rounded-xl">
+              <CheckCircle2 size={18} className="text-gray-300 mx-auto mb-1.5" />
+              <p className="text-xs text-gray-400">No follow-up tasks</p>
+              <button
+                onClick={onCreateTask}
+                className="text-xs text-teal-600 hover:text-teal-700 font-medium mt-1 transition-colors"
+              >
+                Create one now
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {linkedTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onClick={() => onOpenTask(task.id)}
+                />
+              ))}
+            </div>
+          )}
+        </SectionWithAction>
+
         {/* Meta */}
         <Section title="Details" icon={Hash}>
           <InfoRow label="Meeting ID" value={meeting.id} />
@@ -263,6 +343,73 @@ function Section({ title, icon: Icon, children }) {
       </p>
       <div className="space-y-1.5">{children}</div>
     </div>
+  )
+}
+
+// Section variant with a right-aligned action button
+function SectionWithAction({ title, icon: Icon, action, children }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
+          {Icon && <Icon size={11} className="text-gray-300" />}
+          {title}
+        </p>
+        {action}
+      </div>
+      <div className="space-y-1.5">{children}</div>
+    </div>
+  )
+}
+
+// Related task card — clickable to open TaskDetailPanel
+function TaskCard({ task, onClick }) {
+  const sc = TASK_STATUS_CONFIG[task.status] || TASK_STATUS_CONFIG['Todo']
+
+  const StatusIcon =
+    task.status === 'Completed'  ? CheckCircle2 :
+    task.status === 'Overdue'    ? AlertCircle  :
+                                   Circle
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors duration-150 group"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 min-w-0">
+          <StatusIcon
+            size={13}
+            className={`flex-shrink-0 mt-0.5
+              ${task.status === 'Completed' ? 'text-emerald-500' :
+                task.status === 'Overdue'   ? 'text-red-400'     :
+                                              'text-gray-300'}`}
+          />
+          <p className={`text-xs font-semibold leading-snug group-hover:text-teal-700 transition-colors truncate
+            ${task.status === 'Completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+            {task.title}
+          </p>
+        </div>
+        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${sc.color}`}>
+          {sc.label}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-3 mt-1.5 ml-[21px]">
+        {task.dueDate && (
+          <p className="text-[11px] text-gray-400 flex items-center gap-1">
+            <Calendar size={9} />
+            {task.dueDate}
+          </p>
+        )}
+        {task.assignee && (
+          <p className="text-[11px] text-gray-400 flex items-center gap-1">
+            <Avatar name={task.assignee} size="xs" />
+            {task.assignee.split(' ')[0]}
+          </p>
+        )}
+      </div>
+    </button>
   )
 }
 

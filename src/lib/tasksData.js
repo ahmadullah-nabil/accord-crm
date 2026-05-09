@@ -244,7 +244,7 @@ export async function deleteTask(id) {
 export const TASK_STATUSES   = ['Todo', 'In Progress', 'Completed', 'Overdue']
 export const TASK_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent']
 export const TASK_ASSIGNEES  = ['Alex Rivera', 'Jordan Kim', 'Morgan Chen', 'Taylor Brooks']
-export const RELATED_TYPES   = ['Lead', 'Contact', 'None']
+export const RELATED_TYPES   = ['Lead', 'Contact', 'Meeting', 'None']
 
 export const STATUS_CONFIG = {
   'Todo':        { label: 'Todo',        color: 'bg-gray-100 text-gray-600',      dot: 'bg-gray-400',     icon: '○' },

@@ -24,6 +24,7 @@ export function TaskFormModal() {
     addModalOpen, editModalOpen,
     closeAddModal, closeEditModal,
     selectedTaskId,
+    prefillData,
   } = useTasksStore()
 
   const isOpen = addModalOpen || editModalOpen
@@ -45,10 +46,13 @@ export function TaskFormModal() {
           tags: (existingTask.tags || []).join(', '),
         })
       } else {
-        setForm(EMPTY)
+        // For new tasks: apply prefill data supplied by the caller
+        // (e.g. from MeetingDetailPanel's "Create Follow-up Task" button).
+        setForm(prefillData ? { ...EMPTY, ...prefillData } : EMPTY)
       }
       setErrors({})
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isEdit, existingTask?.id])
 
   const close = () => { isEdit ? closeEditModal() : closeAddModal() }

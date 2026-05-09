@@ -117,6 +117,36 @@ export function useDeleteTask() {
   })
 }
 
+// ── useMeetingTasks — tasks linked to a specific meeting ──────────────────────
+// Uses the SAME queryKey as useTasks() so it shares the React Query cache.
+// When useCreateTask / useDeleteTask update ['tasks'], the meeting panel's
+// task list re-derives its filtered view automatically via `select`.
+//
+// relatedType is stored as 'Meeting' to match RELATED_TYPES in tasksData.js.
+export function useMeetingTasks(meetingId) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  return useQuery({
+    queryKey: taskKeys.all(),              // shared cache — same as useTasks()
+    queryFn:  getTasks,
+    staleTime: 1000 * 60 * 2,
+    enabled:   isAuthenticated && Boolean(meetingId),
+    select: (tasks) =>
+      tasks
+        .filter(
+          (t) =>
+            t.relatedId === String(meetingId) &&
+            t.relatedType === 'Meeting',
+        )
+        .sort((a, b) => {
+          // Soonest due date first; null dates at end
+          if (!a.dueDate) return 1
+          if (!b.dueDate) return -1
+          return a.dueDate.localeCompare(b.dueDate)
+        }),
+  })
+}
+
 // ── useToggleTaskComplete ──────────────────────────────────────────────────────
 // Toggles status between 'Completed' and 'Todo'.
 // completedAt is handled server-side by the service's toDb() mapper.
