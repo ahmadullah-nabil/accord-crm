@@ -13,6 +13,7 @@ import {
   Target,
   Bell,
   Zap,
+  TrendingUp,
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore.js'
 import { useUiStore }   from '../../stores/uiStore.js'
@@ -20,13 +21,14 @@ import { Avatar }       from '../ui/Avatar.jsx'
 import { Badge }        from '../ui/Badge.jsx'
 
 const NAV_ITEMS = [
-  { label: 'Dashboard',  to: '/dashboard',  icon: LayoutDashboard },
-  { label: 'Leads',      to: '/leads',      icon: Target },
-  { label: 'Contacts',   to: '/contacts',   icon: Users },
-  { label: 'Meetings',   to: '/meetings',   icon: Calendar },
-  { label: 'Tasks',      to: '/tasks',      icon: CheckSquare },
+  { label: 'Dashboard',     to: '/dashboard',     icon: LayoutDashboard },
+  { label: 'Leads',         to: '/leads',         icon: Target },
+  { label: 'Contacts',      to: '/contacts',      icon: Users },
+  { label: 'Meetings',      to: '/meetings',      icon: Calendar },
+  { label: 'Tasks',         to: '/tasks',         icon: CheckSquare },
+  { label: 'Opportunities', to: '/opportunities', icon: TrendingUp },
   { label: 'Analytics',     to: '/analytics',     icon: BarChart2 },
-  { label: 'Notifications', to: '/notifications', icon: Bell      },
+  { label: 'Notifications', to: '/notifications', icon: Bell },
 ]
 
 const BOTTOM_ITEMS = [

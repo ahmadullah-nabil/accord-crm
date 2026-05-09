@@ -20,14 +20,15 @@ import { Badge }           from '../ui/Badge.jsx'
 import { useNotifications } from '../../hooks/useNotifications.js'
 
 const PAGE_TITLES = {
-  '/dashboard': { title: 'Dashboard',  sub: 'Overview of your pipeline' },
-  '/leads':     { title: 'Leads',      sub: 'Manage and track leads'    },
-  '/contacts':  { title: 'Contacts',   sub: 'Your contact directory'    },
-  '/meetings':  { title: 'Meetings',   sub: 'Scheduled meetings'        },
-  '/tasks':     { title: 'Tasks',      sub: 'Pending tasks & follow-ups'},
-  '/analytics':     { title: 'Analytics',     sub: 'Reports & insights'        },
-  '/notifications': { title: 'Notifications', sub: 'Activity & alerts'          },
-  '/settings':      { title: 'Settings',      sub: 'Account & preferences'     },
+  '/dashboard':     { title: 'Dashboard',      sub: 'Overview of your pipeline'  },
+  '/leads':         { title: 'Leads',          sub: 'Manage and track leads'     },
+  '/contacts':      { title: 'Contacts',       sub: 'Your contact directory'     },
+  '/meetings':      { title: 'Meetings',       sub: 'Scheduled meetings'         },
+  '/tasks':         { title: 'Tasks',          sub: 'Pending tasks & follow-ups' },
+  '/opportunities': { title: 'Opportunities',  sub: 'Deals pipeline'             },
+  '/analytics':     { title: 'Analytics',      sub: 'Reports & insights'         },
+  '/notifications': { title: 'Notifications',  sub: 'Activity & alerts'          },
+  '/settings':      { title: 'Settings',       sub: 'Account & preferences'      },
 }
 
 const MOCK_NOTIFICATIONS = [

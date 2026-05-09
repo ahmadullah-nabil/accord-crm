@@ -6,12 +6,13 @@ import {
   Activity, UserPlus, ArrowRight, FileText, RotateCcw,
 } from 'lucide-react'
 import { useLeadsStore, STAGE_COLORS, PRIORITY_COLORS } from '../../stores/leadsStore.js'
-import { useMeetingsStore }       from '../../stores/meetingsStore.js'
-import { useLeadMeetings }        from '../../hooks/useMeetings.js'
-import { useEntityActivities }    from '../../hooks/useActivities.js'
+import { useMeetingsStore }        from '../../stores/meetingsStore.js'
+import { useOpportunitiesStore }   from '../../stores/opportunitiesStore.js'
+import { useLeadMeetings }         from '../../hooks/useMeetings.js'
+import { useEntityActivities }     from '../../hooks/useActivities.js'
 import { STATUS_CONFIG, formatMeetingDateTime } from '../../lib/meetingsData.js'
-import { Avatar }                 from '../ui/Avatar.jsx'
-import { Skeleton }               from '../ui/Skeleton.jsx'
+import { Avatar }                  from '../ui/Avatar.jsx'
+import { Skeleton }                from '../ui/Skeleton.jsx'
 
 const fmt = (n) =>
   n >= 1000000
@@ -26,7 +27,8 @@ export function LeadDetailPanel() {
     openEditModal, deleteLead, selectedLeadId,
   } = useLeadsStore()
 
-  const { openAddModalWithPrefill, openDetail: openMeetingDetail } = useMeetingsStore()
+  const { openAddModalWithPrefill: openMeetingWithPrefill, openDetail: openMeetingDetail } = useMeetingsStore()
+  const { openAddModalWithPrefill: openOppWithPrefill } = useOpportunitiesStore()
 
   const lead = getSelectedLead()
 
@@ -53,12 +55,27 @@ export function LeadDetailPanel() {
 
   const handleScheduleMeeting = () => {
     if (!lead) return
-    openAddModalWithPrefill({
+    openMeetingWithPrefill({
       relatedType:  'Lead',
       relatedId:    lead.id,
       relatedLabel: `${lead.name} — ${lead.company}`,
       title:        `Meeting — ${lead.company}`,
       participants: lead.name ? [lead.name] : [],
+    })
+  }
+
+  const handleConvertToOpportunity = () => {
+    if (!lead) return
+    openOppWithPrefill({
+      title:       `${lead.company} — Opportunity`,
+      company:     lead.company,
+      email:       lead.email,
+      phone:       lead.phone,
+      assignee:    lead.assignee,
+      value:       String(lead.value || ''),
+      sourceLeadId: lead.id,
+      stage:       'Qualified',
+      probability: 30,
     })
   }
 
@@ -92,6 +109,13 @@ export function LeadDetailPanel() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleConvertToOpportunity}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors"
+                  title="Convert to Opportunity"
+                >
+                  <TrendingUp size={12} /> Convert
+                </button>
                 <button
                   onClick={() => openEditModal(lead.id)}
                   className="p-2 rounded-xl text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-colors"

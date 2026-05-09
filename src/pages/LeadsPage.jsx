@@ -13,7 +13,7 @@ import { MeetingDetailPanel } from '../components/meetings/MeetingDetailPanel.js
 // Task modals — triggered when creating follow-up tasks from a meeting opened via leads
 import { TaskFormModal }      from '../components/tasks/TaskFormModal.jsx'
 import { TaskDetailPanel }    from '../components/tasks/TaskDetailPanel.jsx'
-
+import { OppFormModal }       from '../components/opportunities/OppFormModal.jsx'
 export function LeadsPage() {
   const { viewMode, isLoading, error, initialize } = useLeadsStore()
 
@@ -78,6 +78,7 @@ export function LeadsPage() {
       {/* Task modals — triggered when creating follow-up tasks from a meeting in the lead context */}
       <TaskFormModal />
       <TaskDetailPanel />
+      <OppFormModal />
     </>
   )
 }

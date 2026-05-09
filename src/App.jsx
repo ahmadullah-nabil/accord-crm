@@ -17,6 +17,7 @@ import { LeadsPage }     from './pages/LeadsPage.jsx'
 import { ContactsPage }  from './pages/ContactsPage.jsx'
 import { MeetingsPage }  from './pages/MeetingsPage.jsx'
 import { TasksPage }     from './pages/TasksPage.jsx'
+import { OpportunitiesPage } from './pages/OpportunitiesPage.jsx'
 import { AnalyticsPage }       from './pages/AnalyticsPage.jsx'
 import { SettingsPage }         from './pages/SettingsPage.jsx'
 import { NotificationsPage }    from './pages/NotificationsPage.jsx'
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/contacts"  element={<ContactsPage />} />
           <Route path="/meetings"  element={<MeetingsPage />} />
           <Route path="/tasks"     element={<TasksPage />} />
+          <Route path="/opportunities" element={<OpportunitiesPage />} />
           <Route path="/analytics"      element={<AnalyticsPage />} />
           <Route path="/notifications"  element={<NotificationsPage />} />
           <Route path="/settings"       element={<SettingsPage />} />
