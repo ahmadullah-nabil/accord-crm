@@ -6,8 +6,9 @@ import {
 import { useTasksStore }                            from '../../stores/tasksStore.js'
 import { useTask, useDeleteTask, useToggleTaskComplete } from '../../hooks/useTasks.js'
 import { STATUS_CONFIG, PRIORITY_CONFIG, daysUntilDue } from '../../lib/tasksData.js'
-import { Avatar }                                   from '../ui/Avatar.jsx'
-import { Skeleton, SkeletonText }                   from '../ui/Skeleton.jsx'
+import { TimelinePanel }                           from '../timeline/TimelinePanel.jsx'
+import { Avatar }                                  from '../ui/Avatar.jsx'
+import { Skeleton, SkeletonText }                  from '../ui/Skeleton.jsx'
 
 export function TaskDetailPanel() {
   const { detailPanelOpen, closeDetail, selectedTaskId, openEditModal } = useTasksStore()
@@ -216,6 +217,13 @@ function TaskPanelContent({ task, onClose, onEdit, onDelete, onToggle, isTogglin
             <InfoRow label="Completed" value={task.completedAt} />
           )}
         </Section>
+
+        {/* ── Unified Timeline ────────────────────────────────────────────── */}
+        <TimelinePanel
+          entityType="task"
+          entityId={task.id}
+          entityLabel={task.title}
+        />
       </div>
     </>
   )

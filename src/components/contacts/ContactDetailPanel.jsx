@@ -8,6 +8,7 @@ import { useContact, useDeleteContact }     from '../../hooks/useContacts.js'
 import { TYPE_COLORS, STATUS_COLORS }       from '../../lib/contactsData.js'
 import { Avatar }                           from '../ui/Avatar.jsx'
 import { Skeleton, SkeletonText }           from '../ui/Skeleton.jsx'
+import { TimelinePanel }                    from '../timeline/TimelinePanel.jsx'
 
 export function ContactDetailPanel() {
   const { detailPanelOpen, closeDetail, selectedContactId, openEditModal } = useContactsStore()
@@ -125,12 +126,11 @@ export function ContactDetailPanel() {
 
               {/* Timeline */}
               <Section title="Timeline">
-                <InfoRow icon={Calendar}   label="Created"       value={contact.createdAt} />
-                <InfoRow icon={TrendingUp} label="Last Activity" value={contact.lastActivity} />
-                <InfoRow icon={Link2}      label="Contact ID"    value={contact.id} />
-                {contact.linkedLeadId && (
-                  <InfoRow icon={Link2} label="Linked Lead" value={contact.linkedLeadId} />
-                )}
+                <TimelinePanel
+                  entityType="contact"
+                  entityId={contact.id}
+                  entityLabel={contact.name}
+                />
               </Section>
 
               {/* Tags */}

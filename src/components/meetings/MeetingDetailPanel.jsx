@@ -13,6 +13,7 @@ import { STATUS_CONFIG as TASK_STATUS_CONFIG } from '../../lib/tasksData.js'
 import { useMeetingPermissions }              from '../../hooks/usePermissions.js'
 import { Avatar }                             from '../ui/Avatar.jsx'
 import { Skeleton, SkeletonText }             from '../ui/Skeleton.jsx'
+import { TimelinePanel }                      from '../timeline/TimelinePanel.jsx'
 
 export function MeetingDetailPanel() {
   const { detailPanelOpen, closeDetail, selectedMeetingId, openEditModal } = useMeetingsStore()
@@ -334,7 +335,17 @@ function MeetingPanelContent({ meeting, linkedTasks, tasksLoading, onClose, onEd
           )}
         </SectionWithAction>
 
-        {/* Meta */}
+
+        {/* ── Unified Timeline ─────────────────────────────────────────────── */}
+        {meeting && (
+          <TimelinePanel
+            entityType="meeting"
+            entityId={meeting.id}
+            entityLabel={meeting.title}
+          />
+        )}
+
+                {/* Meta */}
         <Section title="Details" icon={Hash}>
           <InfoRow label="Meeting ID" value={meeting.id} />
           <InfoRow label="Created"    value={meeting.createdAt} />

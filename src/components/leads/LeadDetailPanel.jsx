@@ -9,9 +9,9 @@ import { useLeadsStore, STAGE_COLORS, PRIORITY_COLORS } from '../../stores/leads
 import { useMeetingsStore }        from '../../stores/meetingsStore.js'
 import { useOpportunitiesStore }   from '../../stores/opportunitiesStore.js'
 import { useLeadMeetings }         from '../../hooks/useMeetings.js'
-import { useEntityActivities }     from '../../hooks/useActivities.js'
 import { useLeadPermissions }      from '../../hooks/usePermissions.js'
 import { STATUS_CONFIG, formatMeetingDateTime } from '../../lib/meetingsData.js'
+import { TimelinePanel }           from '../timeline/TimelinePanel.jsx'
 import { Avatar }                  from '../ui/Avatar.jsx'
 import { Skeleton }                from '../ui/Skeleton.jsx'
 
@@ -42,14 +42,7 @@ export function LeadDetailPanel() {
     isLoading: meetingsLoading,
   } = useLeadMeetings(detailPanelOpen ? selectedLeadId : null)
 
-  // Activity timeline — per-lead chronological event log
-  const {
-    data: activities = [],
-    isLoading: activitiesLoading,
-  } = useEntityActivities(
-    detailPanelOpen ? 'lead' : null,
-    detailPanelOpen ? selectedLeadId : null,
-  )
+
 
   const handleDelete = () => {
     if (confirm(`Delete lead "${lead?.name}"?`)) {
@@ -257,69 +250,18 @@ export function LeadDetailPanel() {
                 )}
               </Section>
 
-              {/* ── Activity Timeline ──────────────────────────────────────── */}
-              <Section title="Activity Timeline" icon={Activity}>
-                {activitiesLoading ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="flex gap-2.5">
-                        <Skeleton className="w-7 h-7 rounded-lg flex-shrink-0" />
-                        <div className="flex-1 space-y-1.5">
-                          <Skeleton className="h-3 w-3/4" />
-                          <Skeleton className="h-2.5 w-1/2" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : activities.length === 0 ? (
-                  <div className="text-center py-3 px-3 bg-gray-50 rounded-xl">
-                    <Activity size={16} className="text-gray-300 mx-auto mb-1.5" />
-                    <p className="text-xs text-gray-400">No activity yet</p>
-                    <p className="text-[11px] text-gray-300 mt-0.5">
-                      Events will appear after actions are taken on this lead
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    {activities.map((event, idx) => (
-                      <ActivityEntry
-                        key={event.id}
-                        event={event}
-                        isLast={idx === activities.length - 1}
-                      />
-                    ))}
-                  </div>
-                )}
-              </Section>
+              {/* ── Unified Timeline ─────────────────────────────────────────── */}
+              <TimelinePanel
+                entityType="lead"
+                entityId={selectedLeadId}
+                entityLabel={lead?.company || lead?.name || ''}
+              />
             </div>
           </>
         )}
       </div>
     </>
   )
-}
-
-// ── Activity type → visual config ─────────────────────────────────────────────
-const ACT_CONFIG = {
-  lead_created:       { icon: UserPlus,    bg: 'bg-indigo-50', color: 'text-indigo-600' },
-  lead_stage_changed: { icon: ArrowRight,  bg: 'bg-teal-50',   color: 'text-teal-600'  },
-  lead_updated:       { icon: TrendingUp,  bg: 'bg-gray-100',  color: 'text-gray-500'  },
-  meeting_scheduled:  { icon: Calendar,    bg: 'bg-blue-50',   color: 'text-blue-600'  },
-  meeting_completed:  { icon: CheckCircle2,bg: 'bg-emerald-50',color: 'text-emerald-600'},
-  meeting_updated:    { icon: Calendar,    bg: 'bg-blue-50',   color: 'text-blue-600'  },
-  task_created:       { icon: FileText,    bg: 'bg-amber-50',  color: 'text-amber-600' },
-  task_completed:     { icon: CheckCircle2,bg: 'bg-emerald-50',color: 'text-emerald-600'},
-  task_reopened:      { icon: RotateCcw,   bg: 'bg-gray-100',  color: 'text-gray-500'  },
-}
-
-function relativeTime(iso) {
-  if (!iso) return ''
-  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
-  if (diff < 60)        return 'just now'
-  if (diff < 3600)      return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400)     return `${Math.floor(diff / 3600)}h ago`
-  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`
-  return new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'short' })
 }
 
 function ActivityEntry({ event, isLast }) {

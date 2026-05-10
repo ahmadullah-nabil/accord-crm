@@ -8,7 +8,7 @@ import { useOpportunity, useDeleteOpportunity } from '../../hooks/useOpportuniti
 import { useOpportunityPermissions }  from '../../hooks/usePermissions.js'
 import { useMeetingsStore }    from '../../stores/meetingsStore.js'
 import { useTasksStore }       from '../../stores/tasksStore.js'
-import { useEntityActivities } from '../../hooks/useActivities.js'
+import { TimelinePanel }           from '../timeline/TimelinePanel.jsx'
 import { Avatar }              from '../ui/Avatar.jsx'
 import { Skeleton }            from '../ui/Skeleton.jsx'
 import {
@@ -21,24 +21,7 @@ const fmt = (n) =>
   : n >= 1_000   ? `৳${(n / 1_000).toFixed(0)}K`
   : `৳${n}`
 
-const ACT_CONFIG = {
-  lead_created:       { icon: UserPlus,    bg: 'bg-indigo-50', color: 'text-indigo-600' },
-  lead_stage_changed: { icon: ArrowRight,  bg: 'bg-teal-50',   color: 'text-teal-600'  },
-  meeting_scheduled:  { icon: Calendar,    bg: 'bg-blue-50',   color: 'text-blue-600'  },
-  task_created:       { icon: FileText,    bg: 'bg-amber-50',  color: 'text-amber-600' },
-  task_completed:     { icon: CheckCircle2,bg: 'bg-emerald-50',color: 'text-emerald-600'},
-  task_reopened:      { icon: RotateCcw,   bg: 'bg-gray-100',  color: 'text-gray-500'  },
-}
 
-function relTime(iso) {
-  if (!iso) return ''
-  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
-  if (diff < 60)        return 'just now'
-  if (diff < 3600)      return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400)     return `${Math.floor(diff / 3600)}h ago`
-  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`
-  return new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'short' })
-}
 
 export function OppDetailPanel() {
   const {
@@ -53,10 +36,7 @@ export function OppDetailPanel() {
     detailPanelOpen ? selectedOppId : null
   )
 
-  const { data: activities = [], isLoading: actLoading } = useEntityActivities(
-    detailPanelOpen ? 'opportunity' : null,
-    detailPanelOpen ? selectedOppId : null,
-  )
+
 
   const perms = useOpportunityPermissions(opp)
 
@@ -210,45 +190,12 @@ export function OppDetailPanel() {
                 </Section>
               )}
 
-              {/* Activity timeline */}
-              <Section title="Activity" icon={Activity}>
-                {actLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-10 w-full rounded-xl" />
-                    <Skeleton className="h-10 w-full rounded-xl" />
-                  </div>
-                ) : activities.length === 0 ? (
-                  <div className="text-center py-4 bg-gray-50 rounded-xl">
-                    <Activity size={16} className="text-gray-300 mx-auto mb-1" />
-                    <p className="text-xs text-gray-400">No activity yet</p>
-                  </div>
-                ) : (
-                  <div>
-                    {activities.map((ev, idx) => {
-                      const cfg = ACT_CONFIG[ev.type] || { icon: Activity, bg: 'bg-gray-100', color: 'text-gray-400' }
-                      const Icon = cfg.icon
-                      return (
-                        <div key={ev.id} className="flex gap-2.5 group">
-                          <div className="flex flex-col items-center flex-shrink-0">
-                            <div className={`w-7 h-7 rounded-lg ${cfg.bg} flex items-center justify-center`}>
-                              <Icon size={12} className={cfg.color} />
-                            </div>
-                            {idx < activities.length - 1 && <div className="w-px flex-1 bg-gray-100 mt-1.5 mb-1" />}
-                          </div>
-                          <div className={`flex-1 min-w-0 ${idx < activities.length - 1 ? 'pb-3' : ''}`}>
-                            <p className="text-xs text-gray-700 leading-snug">
-                              <span className="font-semibold">{ev.actor}</span>{' '}
-                              <span className="text-gray-500">{ev.action}</span>{' '}
-                              {ev.subject && <span className="font-medium">{ev.subject}</span>}
-                            </p>
-                            <p className="text-[10px] text-gray-300 mt-0.5">{relTime(ev.occurredAt)}</p>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </Section>
+              {/* ── Unified Timeline ───────────────────────────────────── */}
+              <TimelinePanel
+                entityType="opportunity"
+                entityId={opp.id}
+                entityLabel={opp.title}
+              />
             </div>
           </>
         )}
