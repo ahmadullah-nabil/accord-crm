@@ -148,6 +148,17 @@ export function useVisibleMemberIds() {
   return getVisibleMemberIds(me, members)
 }
 
+// ── useRoleByName — look up a member's real role from the team cache ──────────
+// Returns the real role string ('Admin', 'Manager', 'Employee', etc.) for a
+// given display name, or null if the member isn't found in the cache.
+// Used by detail panels to replace hardcoded static role labels with real data.
+export function useRoleByName(name) {
+  const { data: members = [] } = useTeamMembers()
+  if (!name) return null
+  const found = members.find((m) => m.name === name)
+  return found?.role ?? null   // null = not found; caller renders nothing
+}
+
 export function useIsManager() {
   const user = useAuthStore((s) => s.user)
   return isManagerRole(user?.role ?? '')

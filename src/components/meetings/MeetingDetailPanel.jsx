@@ -14,6 +14,7 @@ import { useMeetingPermissions }              from '../../hooks/usePermissions.j
 import { Avatar }                             from '../ui/Avatar.jsx'
 import { Skeleton, SkeletonText }             from '../ui/Skeleton.jsx'
 import { TimelinePanel }                      from '../timeline/TimelinePanel.jsx'
+import { useRoleByName }                      from '../../hooks/useTeam.js'
 
 export function MeetingDetailPanel() {
   const { detailPanelOpen, closeDetail, selectedMeetingId, openEditModal } = useMeetingsStore()
@@ -30,6 +31,7 @@ export function MeetingDetailPanel() {
   } = useMeetingTasks(detailPanelOpen ? selectedMeetingId : null)
 
   const perms = useMeetingPermissions(meeting)
+  const organizerRole = useRoleByName(meeting?.organizer)
 
   const handleDelete = () => {
     if (!meeting) return
@@ -223,7 +225,9 @@ function MeetingPanelContent({ meeting, linkedTasks, tasksLoading, onClose, onEd
             <Avatar name={meeting.organizer} size="md" />
             <div>
               <p className="text-sm font-medium text-gray-900">{meeting.organizer}</p>
-              <p className="text-xs text-gray-500">Meeting organizer</p>
+              {organizerRole && (
+                <p className="text-xs text-gray-500">{organizerRole}</p>
+              )}
             </div>
           </div>
         </Section>

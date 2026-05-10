@@ -6,6 +6,7 @@ import {
 import { useOpportunitiesStore, OPP_STAGE_COLORS } from '../../stores/opportunitiesStore.js'
 import { useOpportunity, useDeleteOpportunity } from '../../hooks/useOpportunities.js'
 import { useOpportunityPermissions }  from '../../hooks/usePermissions.js'
+import { useRoleByName }              from '../../hooks/useTeam.js'
 import { useMeetingsStore }    from '../../stores/meetingsStore.js'
 import { useTasksStore }       from '../../stores/tasksStore.js'
 import { TimelinePanel }           from '../timeline/TimelinePanel.jsx'
@@ -39,6 +40,7 @@ export function OppDetailPanel() {
 
 
   const perms = useOpportunityPermissions(opp)
+  const assigneeRole = useRoleByName(opp?.assignee)
 
   const handleDelete = () => {
     if (!opp) return
@@ -146,7 +148,9 @@ export function OppDetailPanel() {
                     <Avatar name={opp.assignee} size="md" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">{opp.assignee}</p>
-                      <p className="text-xs text-gray-400">Deal owner</p>
+                      {assigneeRole && (
+                        <p className="text-xs text-gray-400">{assigneeRole}</p>
+                      )}
                     </div>
                   </div>
                 </Section>

@@ -10,6 +10,7 @@ import { useMeetingsStore }        from '../../stores/meetingsStore.js'
 import { useOpportunitiesStore }   from '../../stores/opportunitiesStore.js'
 import { useLeadMeetings }         from '../../hooks/useMeetings.js'
 import { useLeadPermissions }      from '../../hooks/usePermissions.js'
+import { useRoleByName }           from '../../hooks/useTeam.js'
 import { STATUS_CONFIG, formatMeetingDateTime } from '../../lib/meetingsData.js'
 import { TimelinePanel }           from '../timeline/TimelinePanel.jsx'
 import { Avatar }                  from '../ui/Avatar.jsx'
@@ -35,6 +36,9 @@ export function LeadDetailPanel() {
 
   // Permission object — drives all conditional rendering in this panel
   const perms = useLeadPermissions(lead)
+
+  // Real role from public.profiles — replaces hardcoded "Sales Representative"
+  const assigneeRole = useRoleByName(lead?.assignee)
 
   // Fetch meetings linked to this lead (derived from the React Query meetings cache)
   const {
@@ -178,7 +182,9 @@ export function LeadDetailPanel() {
                   <Avatar name={lead.assignee} size="md" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">{lead.assignee}</p>
-                    <p className="text-xs text-gray-500">Sales Representative</p>
+                    {assigneeRole && (
+                      <p className="text-xs text-gray-500">{assigneeRole}</p>
+                    )}
                   </div>
                 </div>
               </Section>

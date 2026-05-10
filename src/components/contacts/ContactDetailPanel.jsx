@@ -6,6 +6,7 @@ import {
 import { useContactsStore }                 from '../../stores/contactsStore.js'
 import { useContact, useDeleteContact }     from '../../hooks/useContacts.js'
 import { TYPE_COLORS, STATUS_COLORS }       from '../../lib/contactsData.js'
+import { useRoleByName }                    from '../../hooks/useTeam.js'
 import { Avatar }                           from '../ui/Avatar.jsx'
 import { Skeleton, SkeletonText }           from '../ui/Skeleton.jsx'
 import { TimelinePanel }                    from '../timeline/TimelinePanel.jsx'
@@ -17,6 +18,9 @@ export function ContactDetailPanel() {
   const { data: contact, isLoading } = useContact(
     detailPanelOpen ? selectedContactId : null
   )
+
+  // Real role from public.profiles — replaces hardcoded "Account Owner"
+  const assigneeRole = useRoleByName(contact?.assignee)
 
   const handleDelete = () => {
     if (!contact) return
@@ -119,7 +123,9 @@ export function ContactDetailPanel() {
                   <Avatar name={contact.assignee} size="md" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">{contact.assignee}</p>
-                    <p className="text-xs text-gray-500">Account Owner</p>
+                    {assigneeRole && (
+                      <p className="text-xs text-gray-500">{assigneeRole}</p>
+                    )}
                   </div>
                 </div>
               </Section>
