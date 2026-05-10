@@ -17,7 +17,7 @@ import { useAuthStore }    from '../../stores/authStore.js'
 import { useUiStore }      from '../../stores/uiStore.js'
 import { Avatar }          from '../ui/Avatar.jsx'
 import { Badge }           from '../ui/Badge.jsx'
-import { useNotifications } from '../../hooks/useNotifications.js'
+import { useUnreadCount }  from '../../hooks/useNotifications.js'
 
 const PAGE_TITLES = {
   '/dashboard':     { title: 'Dashboard',      sub: 'Overview of your pipeline'  },
@@ -30,41 +30,6 @@ const PAGE_TITLES = {
   '/notifications': { title: 'Notifications',  sub: 'Activity & alerts'          },
   '/settings':      { title: 'Settings',       sub: 'Account & preferences'      },
 }
-
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    type: 'success',
-    title: 'Lead qualified',
-    body:  'TechCorp Inc. moved to Qualified stage',
-    time:  '2m ago',
-    read:  false,
-  },
-  {
-    id: 2,
-    type: 'info',
-    title: 'Meeting reminder',
-    body:  'Demo call with Acme in 30 minutes',
-    time:  '28m ago',
-    read:  false,
-  },
-  {
-    id: 3,
-    type: 'warning',
-    title: 'Follow-up due',
-    body:  '3 leads have overdue follow-ups',
-    time:  '1h ago',
-    read:  true,
-  },
-  {
-    id: 4,
-    type: 'success',
-    title: 'Deal won!',
-    body:  'GlobalX — $24,000 deal marked as Won',
-    time:  '3h ago',
-    read:  true,
-  },
-]
 
 export function Navbar() {
   const { user, logout }    = useAuthStore()
@@ -84,8 +49,7 @@ export function Navbar() {
   const profileRef = useRef(null)
 
   const pageInfo = PAGE_TITLES[location.pathname] || { title: 'Accord CRM', sub: '' }
-  const { data: notifs = [] } = useNotifications()
-  const unread   = notifs.filter((n) => !n.isRead).length
+  const { data: unread = 0 } = useUnreadCount()
 
   // Close dropdowns on outside click
   useEffect(() => {

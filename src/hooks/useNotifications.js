@@ -1,114 +1,193 @@
+// ─── Notification React Query Hooks ──────────────────────────────────────────
+//
+// All hooks read from notificationsService.js (real Supabase).
+// RLS scopes every query to the authenticated user — no client-side filtering.
+//
+// staleTime: 30 s — notifications should feel live without hammering Supabase.
+// The Realtime subscription in AppLayout handles instant badge updates.
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '../stores/authStore.js'
 import {
-  fetchNotifications,
-  fetchNotificationById,
-  markAsRead,
-  markAsUnread,
-  markAllAsRead,
-  clearNotification,
-  clearAllRead,
-  togglePin,
-} from '../lib/notificationsData.js'
+  getNotifications,
+  getUnreadCount,
+  getNotificationById,
+  markNotificationRead,
+  markNotificationUnread,
+  markAllNotificationsRead,
+  toggleNotificationPin,
+  deleteNotification,
+  deleteAllReadNotifications,
+} from '../services/notificationsService.js'
 
 // ── Query keys ────────────────────────────────────────────────────────────────
 export const notifKeys = {
-  all:    () => ['notifications'],
-  detail: (id) => ['notifications', id],
+  all:        () => ['notifications'],
+  unreadCount:() => ['notifications', 'unread_count'],
+  detail:     (id) => ['notifications', id],
 }
 
-// ── Hooks ─────────────────────────────────────────────────────────────────────
+const STALE = 1000 * 30   // 30 seconds
 
-/** Fetch all notifications */
+// ── Read hooks ────────────────────────────────────────────────────────────────
+
+/** Full notification list for the current user. */
 export function useNotifications() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   return useQuery({
-    queryKey: notifKeys.all(),
-    queryFn:  fetchNotifications,
-    staleTime: 1000 * 30, // fresher than other modules — 30 seconds
+    queryKey:        notifKeys.all(),
+    queryFn:         getNotifications,
+    staleTime:       STALE,
+    enabled:         isAuthenticated,
+    placeholderData: [],
   })
 }
 
-/** Fetch a single notification by id */
+/**
+ * Lightweight unread badge count — uses a COUNT query, not a full fetch.
+ * Used by Navbar to avoid fetching all notifications just for the red dot.
+ */
+export function useUnreadCount() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  return useQuery({
+    queryKey:        notifKeys.unreadCount(),
+    queryFn:         getUnreadCount,
+    staleTime:       STALE,
+    enabled:         isAuthenticated,
+    placeholderData: 0,
+  })
+}
+
+/** Single notification detail. */
 export function useNotification(id) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   return useQuery({
     queryKey: notifKeys.detail(id),
-    queryFn:  () => fetchNotificationById(id),
-    enabled:  Boolean(id),
-    staleTime: 1000 * 30,
+    queryFn:  () => getNotificationById(id),
+    enabled:  isAuthenticated && Boolean(id),
+    staleTime: STALE,
   })
 }
 
-/** Mark one notification as read */
-export function useMarkAsRead() {
+// ── Mutation hooks ────────────────────────────────────────────────────────────
+
+/** Mark one notification read — optimistic update. */
+export function useMarkRead() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: markAsRead,
-    onSuccess: (updated) => {
+    mutationFn: markNotificationRead,
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: notifKeys.all() })
+      const prev = qc.getQueryData(notifKeys.all())
       qc.setQueryData(notifKeys.all(), (old = []) =>
-        old.map((n) => (n.id === updated.id ? updated : n))
+        old.map((n) => n.id === id ? { ...n, isRead: true } : n)
       )
-      qc.setQueryData(notifKeys.detail(updated.id), updated)
+      return { prev }
+    },
+    onError: (_e, _id, ctx) => { if (ctx?.prev) qc.setQueryData(notifKeys.all(), ctx.prev) },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: notifKeys.all() })
+      qc.invalidateQueries({ queryKey: notifKeys.unreadCount() })
     },
   })
 }
 
-/** Mark one notification as unread */
-export function useMarkAsUnread() {
+/** Mark one notification unread — optimistic update. */
+export function useMarkUnread() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: markAsUnread,
-    onSuccess: (updated) => {
+    mutationFn: markNotificationUnread,
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: notifKeys.all() })
+      const prev = qc.getQueryData(notifKeys.all())
       qc.setQueryData(notifKeys.all(), (old = []) =>
-        old.map((n) => (n.id === updated.id ? updated : n))
+        old.map((n) => n.id === id ? { ...n, isRead: false } : n)
       )
-      qc.setQueryData(notifKeys.detail(updated.id), updated)
+      return { prev }
+    },
+    onError: (_e, _id, ctx) => { if (ctx?.prev) qc.setQueryData(notifKeys.all(), ctx.prev) },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: notifKeys.all() })
+      qc.invalidateQueries({ queryKey: notifKeys.unreadCount() })
     },
   })
 }
 
-/** Mark ALL notifications as read */
-export function useMarkAllAsRead() {
+/** Mark all as read. */
+export function useMarkAllRead() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: markAllAsRead,
-    onSuccess: (all) => {
-      qc.setQueryData(notifKeys.all(), all)
+    mutationFn: markAllNotificationsRead,
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: notifKeys.all() })
+      const prev = qc.getQueryData(notifKeys.all())
+      qc.setQueryData(notifKeys.all(), (old = []) =>
+        old.map((n) => ({ ...n, isRead: true }))
+      )
+      qc.setQueryData(notifKeys.unreadCount(), 0)
+      return { prev }
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(notifKeys.all(), ctx.prev) },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: notifKeys.all() })
+      qc.invalidateQueries({ queryKey: notifKeys.unreadCount() })
     },
   })
 }
 
-/** Clear (delete) a single notification */
-export function useClearNotification() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: clearNotification,
-    onSuccess: (_, id) => {
-      qc.setQueryData(notifKeys.all(), (old = []) => old.filter((n) => n.id !== id))
-      qc.removeQueries({ queryKey: notifKeys.detail(id) })
-    },
-  })
-}
-
-/** Clear all read notifications */
-export function useClearAllRead() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: clearAllRead,
-    onSuccess: (remaining) => {
-      qc.setQueryData(notifKeys.all(), remaining)
-    },
-  })
-}
-
-/** Toggle pin on a notification */
+/** Toggle pinned state. */
 export function useTogglePin() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: togglePin,
+    mutationFn: toggleNotificationPin,
     onSuccess: (updated) => {
       qc.setQueryData(notifKeys.all(), (old = []) =>
-        old.map((n) => (n.id === updated.id ? updated : n))
+        old.map((n) => n.id === updated.id ? updated : n)
       )
-      qc.setQueryData(notifKeys.detail(updated.id), updated)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: notifKeys.all() }),
+  })
+}
+
+/** Delete one notification — optimistic. */
+export function useDeleteNotification() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteNotification,
+    onMutate: async ({ id }) => {
+      await qc.cancelQueries({ queryKey: notifKeys.all() })
+      const prev = qc.getQueryData(notifKeys.all())
+      qc.setQueryData(notifKeys.all(), (old = []) => old.filter((n) => n.id !== id))
+      return { prev }
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(notifKeys.all(), ctx.prev) },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: notifKeys.all() })
+      qc.invalidateQueries({ queryKey: notifKeys.unreadCount() })
     },
   })
 }
+
+/** Delete all read non-pinned notifications. */
+export function useClearAllRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteAllReadNotifications,
+    onMutate: async () => {
+      const prev = qc.getQueryData(notifKeys.all())
+      qc.setQueryData(notifKeys.all(), (old = []) =>
+        old.filter((n) => !n.isRead || n.isPinned)
+      )
+      return { prev }
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(notifKeys.all(), ctx.prev) },
+    onSettled: () => qc.invalidateQueries({ queryKey: notifKeys.all() }),
+  })
+}
+
+// ── Aliases for component compatibility ───────────────────────────────────────
+export const useMarkAsRead        = useMarkRead
+export const useMarkAsUnread      = useMarkUnread
+export const useMarkAllAsRead     = useMarkAllRead
+export const useClearNotification = useDeleteNotification
+export const useClearAll          = useClearAllRead

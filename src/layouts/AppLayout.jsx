@@ -3,10 +3,14 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '../components/layout/Sidebar.jsx'
 import { Navbar }  from '../components/layout/Navbar.jsx'
 import { useUiStore } from '../stores/uiStore.js'
+import { useIntelligence } from '../hooks/useIntelligence.js'
 
 export function AppLayout() {
   const { mobileMenuOpen, closeMobileMenu, sidebarCollapsed } = useUiStore()
   const location = useLocation()
+
+  // Mount intelligence scanner — runs once on login, every 30 min thereafter
+  useIntelligence()
 
   // Close mobile menu on route change
   useEffect(() => {
