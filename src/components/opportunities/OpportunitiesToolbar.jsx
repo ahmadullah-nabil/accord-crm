@@ -1,6 +1,7 @@
 import React from 'react'
 import { Search, Plus, LayoutList, Kanban, X, User, SlidersHorizontal } from 'lucide-react'
 import { useOpportunitiesStore, OPPORTUNITY_STAGES } from '../../stores/opportunitiesStore.js'
+import { ExportButton } from '../import-export/ExportButton.jsx'
 import { useAuthStore }   from '../../stores/authStore.js'
 import { useAssignableMembers } from '../../hooks/useTeam.js'
 
@@ -71,9 +72,12 @@ export function OpportunitiesToolbar({ total, filtered }) {
             </button>
           ))}
         </div>
-        <button onClick={openAddModal} className="btn-primary py-2 text-sm flex-shrink-0">
-          <Plus size={15} /> Add Deal
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <ExportButton entityType="opportunity" />
+          <button onClick={openAddModal} className="btn-primary py-2 text-sm">
+            <Plus size={15} /> Add Deal
+          </button>
+        </div>
       </div>
 
       {/* Row 2: filters */}

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { X, User, Building2, Mail, Phone, Briefcase, Globe, MapPin, Tag } from 'lucide-react'
+import { X, User, Building2, Mail, Phone, Briefcase, Globe, MapPin, Tag, AlertCircle } from 'lucide-react'
 import { useContactsStore }           from '../../stores/contactsStore.js'
 import { useCreateContact, useUpdateContact, useContact } from '../../hooks/useContacts.js'
 import {
-  CONTACT_TYPES, CONTACT_STATUSES, CONTACT_ASSIGNEES,
+  CONTACT_TYPES, CONTACT_STATUSES,
 } from '../../lib/contactsData.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 const EMPTY = {
   name: '', company: '', designation: '', email: '', phone: '',
@@ -18,6 +19,16 @@ export function ContactFormModal() {
     closeAddModal, closeEditModal,
     selectedContactId,
   } = useContactsStore()
+
+  // Use full member objects so we can filter to real Supabase profiles.
+  // Real profiles have a proper UUID id (36 chars with hyphens).
+  // This prevents any legacy static fallback data from appearing in the dropdown.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const { members: allMembers } = useAssignableMembers()
+  const assigneeNames = allMembers
+    .filter((m) => UUID_RE.test(m.id ?? ''))
+    .map((m) => m.name)
+    .filter(Boolean)
 
   const isOpen = addModalOpen || editModalOpen
   const isEdit = editModalOpen
@@ -42,10 +53,18 @@ export function ContactFormModal() {
         setForm(EMPTY)
       }
       setErrors({})
+      // Reset any previous mutation errors when the modal opens
+      createMutation.reset()
+      updateMutation.reset()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isEdit, existingContact?.id])
 
-  const close = () => { isEdit ? closeEditModal() : closeAddModal() }
+  const close = () => {
+    isEdit ? closeEditModal() : closeAddModal()
+    createMutation.reset()
+    updateMutation.reset()
+  }
 
   const validate = () => {
     const e = {}
@@ -76,7 +95,9 @@ export function ContactFormModal() {
     }
   }
 
-  const isPending = createMutation.isPending || updateMutation.isPending
+  const isPending   = createMutation.isPending || updateMutation.isPending
+  // Surface the Supabase error message if either mutation failed
+  const mutationError = createMutation.error?.message || updateMutation.error?.message
 
   const setField = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -110,6 +131,14 @@ export function ContactFormModal() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+            {/* Mutation error banner */}
+            {mutationError && (
+              <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm animate-fade-in">
+                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                <span>{mutationError}</span>
+              </div>
+            )}
 
             {/* Name + Company */}
             <div className="grid grid-cols-2 gap-3">
@@ -181,7 +210,7 @@ export function ContactFormModal() {
             <Field label="Assignee" error={errors.assignee}>
               <select className="input-base" value={form.assignee} onChange={setField('assignee')}>
                 <option value="">Select assignee…</option>
-                {CONTACT_ASSIGNEES.map((a) => <option key={a}>{a}</option>)}
+                {assigneeNames.map((a) => <option key={a}>{a}</option>)}
               </select>
             </Field>
 

@@ -1,8 +1,12 @@
-import React from 'react'
-import { Search, SlidersHorizontal, Plus, LayoutList, Kanban, X, User } from 'lucide-react'
+import React, { useState } from 'react'
+import { Search, SlidersHorizontal, Plus, LayoutList, Kanban, X, User, Upload, Download } from 'lucide-react'
 import { useLeadsStore, STAGES, PRIORITIES, SOURCES } from '../../stores/leadsStore.js'
 import { useAssignableMembers } from '../../hooks/useTeam.js'
-import { useAuthStore } from '../../stores/authStore.js'
+import { useAuthStore }  from '../../stores/authStore.js'
+import { isManager }     from '../../lib/permissions.js'
+import { ImportModal }   from '../import-export/ImportModal.jsx'
+import { ExportButton }  from '../import-export/ExportButton.jsx'
+import { useQueryClient } from '@tanstack/react-query'
 
 export function LeadsToolbar() {
   const {
@@ -16,6 +20,9 @@ export function LeadsToolbar() {
   } = useLeadsStore()
 
   const user = useAuthStore((s) => s.user)
+  const canImport = isManager(user)
+  const [showImport, setShowImport] = useState(false)
+  const qc = useQueryClient()
 
   const isMineActive =
     assigneeFilter === (user?.name ?? '') &&
@@ -87,11 +94,34 @@ export function LeadsToolbar() {
           </button>
         </div>
 
-        {/* Add Lead */}
-        <button onClick={openAddModal} className="btn-primary py-2 text-sm flex-shrink-0">
-          <Plus size={15} /> Add Lead
-        </button>
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {canImport && (
+            <button
+              onClick={() => setShowImport(true)}
+              className="btn-secondary py-2 text-sm flex items-center gap-1.5"
+              title="Import leads from CSV"
+            >
+              <Upload size={14} /> Import
+            </button>
+          )}
+          <ExportButton entityType="lead" />
+          <button onClick={openAddModal} className="btn-primary py-2 text-sm">
+            <Plus size={15} /> Add Lead
+          </button>
+        </div>
       </div>
+
+      {showImport && (
+        <ImportModal
+          entityType="lead"
+          onClose={() => setShowImport(false)}
+          onSuccess={(count) => {
+            setShowImport(false)
+            qc.invalidateQueries({ queryKey: ['leads'] })
+          }}
+        />
+      )}
 
       {/* Row 2: filter chips */}
       <div className="flex items-center gap-2 flex-wrap">
