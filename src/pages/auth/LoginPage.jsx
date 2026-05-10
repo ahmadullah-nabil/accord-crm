@@ -1,17 +1,16 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Mail, ArrowRight } from 'lucide-react'
+import { Mail, ArrowRight, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore.js'
 import {
-  AuthField, PasswordField, AuthAlert, AuthDivider,
-  DemoAccountPicker, RememberMe, AuthSubmitButton,
+  AuthField, PasswordField, AuthAlert, RememberMe, AuthSubmitButton,
 } from '../../components/auth/AuthShared.jsx'
 
 export function LoginPage() {
-  const [email,     setEmail]     = useState('')
-  const [password,  setPassword]  = useState('')
+  const [email,      setEmail]      = useState('')
+  const [password,   setPassword]   = useState('')
   const [rememberMe, setRememberMe] = useState(false)
-  const [formError, setFormError] = useState('')
+  const [formError,  setFormError]  = useState('')
 
   const { login, isLoading, error, clearError } = useAuthStore()
   const navigate = useNavigate()
@@ -34,13 +33,6 @@ export function LoginPage() {
     }
   }
 
-  const fillDemo = (acc) => {
-    setEmail(acc.email)
-    setPassword(acc.password)
-    setFormError('')
-    clearError()
-  }
-
   const displayError = formError || error
 
   return (
@@ -54,11 +46,6 @@ export function LoginPage() {
           Sign in to your workspace to continue.
         </p>
       </div>
-
-      {/* Demo account pills */}
-      <DemoAccountPicker onSelect={fillDemo} />
-
-      <AuthDivider label="or sign in manually" />
 
       {/* Error */}
       {displayError && (
@@ -110,11 +97,10 @@ export function LoginPage() {
         />
       </form>
 
-      <div className="mt-6 text-center text-sm text-gray-500">
-        Don't have an account?{' '}
-        <Link to="/signup" className="text-teal-600 hover:text-teal-700 font-semibold">
-          Sign up free
-        </Link>
+      {/* Enterprise access notice — replaces demo/signup CTAs */}
+      <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-gray-400">
+        <ShieldCheck size={13} className="text-gray-300 flex-shrink-0" />
+        Access restricted to authorised workspace members.
       </div>
     </div>
   )

@@ -29,6 +29,7 @@ const PAGE_TITLES = {
   '/analytics':     { title: 'Analytics',      sub: 'Reports & insights'         },
   '/notifications': { title: 'Notifications',  sub: 'Activity & alerts'          },
   '/settings':      { title: 'Settings',       sub: 'Account & preferences'      },
+  '/users':         { title: 'User Management', sub: 'Workspace members & roles' },
 }
 
 export function Navbar() {

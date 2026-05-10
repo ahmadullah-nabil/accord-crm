@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   Calendar,
   CheckSquare,
   BarChart2,
@@ -31,7 +32,9 @@ const NAV_ITEMS = [
   { label: 'Notifications', to: '/notifications', icon: Bell },
 ]
 
-const BOTTOM_ITEMS = [
+// Admin-only navigation items shown at the bottom of the sidebar
+const ADMIN_ITEMS = [
+  { label: 'Users',    to: '/users',    icon: UserCog },
   { label: 'Settings', to: '/settings', icon: Settings },
 ]
 
@@ -39,6 +42,8 @@ export function Sidebar() {
   const { user, logout }    = useAuthStore()
   const { sidebarCollapsed, toggleSidebar } = useUiStore()
   const navigate = useNavigate()
+
+  const isAdmin = user?.role === 'Admin'
 
   const handleLogout = () => {
     logout()
@@ -118,7 +123,8 @@ export function Sidebar() {
         )}
         {sidebarCollapsed && <div className="my-3 border-t" style={{ borderColor: '#1e2d40' }} />}
 
-        {BOTTOM_ITEMS.map(({ label, to, icon: Icon }) => (
+        {/* Admin-only: Users & Settings */}
+        {isAdmin && ADMIN_ITEMS.map(({ label, to, icon: Icon }) => (
           <SidebarNavItem
             key={to}
             to={to}

@@ -152,40 +152,6 @@ export function AuthDivider({ label = 'or' }) {
   )
 }
 
-// ── Demo account quick-fill pills ─────────────────────────────────────────────
-export const DEMO_ACCOUNTS = [
-  { role: 'Admin',     email: 'admin@nexuscrm.io',   password: 'admin123'   },
-  { role: 'AGM',       email: 'agm@nexuscrm.io',     password: 'agm123'     },
-  { role: 'Manager',   email: 'manager@nexuscrm.io', password: 'manager123' },
-  { role: 'Executive', email: 'exec@nexuscrm.io',    password: 'exec123'    },
-]
-
-export function DemoAccountPicker({ onSelect }) {
-  return (
-    <div className="mb-1">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
-        Quick demo access
-      </p>
-      <div className="grid grid-cols-2 gap-1.5">
-        {DEMO_ACCOUNTS.map((acc) => (
-          <button
-            key={acc.role}
-            type="button"
-            onClick={() => onSelect(acc)}
-            className="text-left px-3 py-2 rounded-xl border border-gray-200 hover:border-teal-300
-                       hover:bg-teal-50 transition-all duration-150 group"
-          >
-            <span className="block text-xs font-semibold text-gray-700 group-hover:text-teal-700">
-              {acc.role}
-            </span>
-            <span className="block text-[11px] text-gray-400 truncate">{acc.email}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── Password strength meter ───────────────────────────────────────────────────
 function getStrength(pw) {
   if (!pw) return { score: 0, label: '', color: '' }

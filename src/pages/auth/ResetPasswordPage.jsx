@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { CheckCircle, AlertTriangle } from 'lucide-react'
-import { useAuthStore } from '../../stores/authStore.js'
+import { supabase }       from '../../lib/supabaseClient.js'
+import { useAuthStore }   from '../../stores/authStore.js'
 import {
   PasswordField, AuthAlert, AuthSubmitButton,
   PasswordStrengthMeter,
@@ -9,24 +10,58 @@ import {
 import { Spinner } from '../../components/ui/Spinner.jsx'
 
 export function ResetPasswordPage() {
-  const [password,  setPassword]  = useState('')
-  const [confirm,   setConfirm]   = useState('')
-  const [success,   setSuccess]   = useState(false)
+  const [password,    setPassword]    = useState('')
+  const [confirm,     setConfirm]     = useState('')
+  const [success,     setSuccess]     = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
+  // null = still checking, true = valid recovery session, false = invalid/expired
+  const [sessionReady, setSessionReady] = useState(null)
 
   const { resetPassword, isLoading, error, clearError } = useAuthStore()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
 
-  // In production: token comes from Supabase magic link query param
-  const token = searchParams.get('token') || 'demo-reset-token'
-  const hasToken = Boolean(token)
+  // ── Detect the Supabase PASSWORD_RECOVERY session from the URL fragment ──────
+  // Supabase sets detectSessionInUrl: true, which processes the
+  // #access_token=...&type=recovery fragment and fires PASSWORD_RECOVERY.
+  // We listen for that event (or an already-active recovery session) to confirm
+  // the link is valid before showing the form.
+  useEffect(() => {
+    // Check if a recovery session is already active (page loaded from valid link)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // Session is present — Supabase already processed the recovery token
+        setSessionReady(true)
+      }
+      // If no session yet, wait for the PASSWORD_RECOVERY event below
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setSessionReady(true)
+      } else if (event === 'SIGNED_OUT') {
+        setSessionReady(false)
+      }
+    })
+
+    // Timeout: if no recovery session arrives within 4 s, the link is stale
+    const timeout = setTimeout(() => {
+      setSessionReady((current) => {
+        if (current === null) return false   // still waiting → invalid
+        return current
+      })
+    }, 4000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
+  }, [])
 
   const validate = () => {
     const errs = {}
-    if (!password)           errs.password = 'Password is required.'
+    if (!password)                errs.password = 'Password is required.'
     else if (password.length < 8) errs.password = 'Password must be at least 8 characters.'
-    if (!confirm)            errs.confirm  = 'Please confirm your password.'
+    if (!confirm)                 errs.confirm  = 'Please confirm your password.'
     else if (password !== confirm) errs.confirm = 'Passwords do not match.'
     return errs
   }
@@ -37,15 +72,29 @@ export function ResetPasswordPage() {
     const errs = validate()
     if (Object.keys(errs).length) { setFieldErrors(errs); return }
 
-    const result = await resetPassword(token, password)
+    // authStore.resetPassword ignores the first arg (token) and calls
+    // supabase.auth.updateUser — the session is already active from the link
+    const result = await resetPassword(null, password)
     if (result.success) {
       setSuccess(true)
       setTimeout(() => navigate('/login'), 2500)
     }
   }
 
-  // ── Invalid/missing token ─────────────────────────────────────────────────
-  if (!hasToken) {
+  // ── Loading: checking session ────────────────────────────────────────────
+  if (sessionReady === null) {
+    return (
+      <div className="p-8 text-center">
+        <div className="flex justify-center mb-4">
+          <Spinner size="md" />
+        </div>
+        <p className="text-sm text-gray-500">Verifying your reset link…</p>
+      </div>
+    )
+  }
+
+  // ── Invalid / expired link ────────────────────────────────────────────────
+  if (sessionReady === false) {
     return (
       <div className="p-8 text-center">
         <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -53,7 +102,8 @@ export function ResetPasswordPage() {
         </div>
         <h2 className="font-display font-bold text-2xl text-gray-900 mb-2">Link expired</h2>
         <p className="text-sm text-gray-500 mb-6">
-          This password reset link is invalid or has expired.
+          This password reset link is invalid or has expired. Reset links are
+          single-use and expire after 60 minutes.
         </p>
         <Link to="/forgot-password" className="btn-primary inline-flex">
           Request a new link
@@ -82,6 +132,7 @@ export function ResetPasswordPage() {
     )
   }
 
+  // ── Form ──────────────────────────────────────────────────────────────────
   return (
     <div className="p-8">
       {/* Heading */}
@@ -136,8 +187,8 @@ export function ResetPasswordPage() {
         <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
           {[
             { rule: password.length >= 8,           text: 'At least 8 characters' },
-            { rule: /[A-Z]/.test(password),          text: 'One uppercase letter' },
-            { rule: /[0-9]/.test(password),          text: 'One number' },
+            { rule: /[A-Z]/.test(password),          text: 'One uppercase letter'  },
+            { rule: /[0-9]/.test(password),          text: 'One number'            },
           ].map(({ rule, text }) => (
             <p key={text} className={`text-xs flex items-center gap-2
               ${rule ? 'text-emerald-600' : 'text-gray-400'}`}>

@@ -20,6 +20,7 @@ import { TasksPage }     from './pages/TasksPage.jsx'
 import { OpportunitiesPage } from './pages/OpportunitiesPage.jsx'
 import { AnalyticsPage }       from './pages/AnalyticsPage.jsx'
 import { SettingsPage }         from './pages/SettingsPage.jsx'
+import { UsersPage }            from './pages/UsersPage.jsx'
 import { NotificationsPage }    from './pages/NotificationsPage.jsx'
 import { NotFoundPage }         from './pages/NotFoundPage.jsx'
 
@@ -61,7 +62,24 @@ export default function App() {
           <Route path="/opportunities" element={<OpportunitiesPage />} />
           <Route path="/analytics"      element={<AnalyticsPage />} />
           <Route path="/notifications"  element={<NotificationsPage />} />
-          <Route path="/settings"       element={<SettingsPage />} />
+
+          {/* Admin-only routes — redirect to /dashboard for non-admins */}
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <UsersPage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         {/* 404 */}

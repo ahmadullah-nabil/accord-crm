@@ -104,14 +104,6 @@ export function ForgotPasswordPage() {
           Back to sign in
         </Link>
       </div>
-
-      {/* Signup prompt */}
-      <div className="mt-3 text-center text-sm text-gray-500">
-        Don't have an account?{' '}
-        <Link to="/signup" className="text-teal-600 hover:text-teal-700 font-semibold">
-          Sign up free
-        </Link>
-      </div>
     </div>
   )
 }
