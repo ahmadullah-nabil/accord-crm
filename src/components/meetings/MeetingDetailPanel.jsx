@@ -10,6 +10,7 @@ import { STATUS_CONFIG, TYPE_CONFIG, formatMeetingDateTime, daysFromToday } from
 import { useTasksStore }                      from '../../stores/tasksStore.js'
 import { useMeetingTasks }                    from '../../hooks/useTasks.js'
 import { STATUS_CONFIG as TASK_STATUS_CONFIG } from '../../lib/tasksData.js'
+import { useMeetingPermissions }              from '../../hooks/usePermissions.js'
 import { Avatar }                             from '../ui/Avatar.jsx'
 import { Skeleton, SkeletonText }             from '../ui/Skeleton.jsx'
 
@@ -26,6 +27,8 @@ export function MeetingDetailPanel() {
     data: linkedTasks = [],
     isLoading: tasksLoading,
   } = useMeetingTasks(detailPanelOpen ? selectedMeetingId : null)
+
+  const perms = useMeetingPermissions(meeting)
 
   const handleDelete = () => {
     if (!meeting) return
@@ -77,9 +80,9 @@ export function MeetingDetailPanel() {
             linkedTasks={linkedTasks}
             tasksLoading={tasksLoading}
             onClose={closeDetail}
-            onEdit={() => openEditModal(meeting.id)}
-            onDelete={handleDelete}
-            onCreateTask={handleCreateFollowUpTask}
+            onEdit={perms.canEdit ? () => openEditModal(meeting.id) : null}
+            onDelete={perms.canDelete ? handleDelete : null}
+            onCreateTask={perms.canFollowUp ? handleCreateFollowUpTask : null}
             onOpenTask={openTaskDetail}
           />
         )}
@@ -133,20 +136,24 @@ function MeetingPanelContent({ meeting, linkedTasks, tasksLoading, onClose, onEd
           </div>
 
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={onEdit}
-              className="p-2 rounded-xl text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-colors"
-              title="Edit"
-            >
-              <Pencil size={15} />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              title="Delete"
-            >
-              <Trash2 size={15} />
-            </button>
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="p-2 rounded-xl text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-colors"
+                title="Edit"
+              >
+                <Pencil size={15} />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
@@ -284,14 +291,16 @@ function MeetingPanelContent({ meeting, linkedTasks, tasksLoading, onClose, onEd
           title="Follow-up Tasks"
           icon={CheckCircle2}
           action={
-            <button
-              onClick={onCreateTask}
-              className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
-              title="Create a follow-up task for this meeting"
-            >
-              <Plus size={12} />
-              Add task
-            </button>
+            onCreateTask ? (
+              <button
+                onClick={onCreateTask}
+                className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+                title="Create a follow-up task for this meeting"
+              >
+                <Plus size={12} />
+                Add task
+              </button>
+            ) : null
           }
         >
           {tasksLoading ? (
@@ -303,12 +312,14 @@ function MeetingPanelContent({ meeting, linkedTasks, tasksLoading, onClose, onEd
             <div className="text-center py-4 px-3 bg-gray-50 rounded-xl">
               <CheckCircle2 size={18} className="text-gray-300 mx-auto mb-1.5" />
               <p className="text-xs text-gray-400">No follow-up tasks</p>
-              <button
-                onClick={onCreateTask}
-                className="text-xs text-teal-600 hover:text-teal-700 font-medium mt-1 transition-colors"
-              >
-                Create one now
-              </button>
+              {onCreateTask && (
+                <button
+                  onClick={onCreateTask}
+                  className="text-xs text-teal-600 hover:text-teal-700 font-medium mt-1 transition-colors"
+                >
+                  Create one now
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">

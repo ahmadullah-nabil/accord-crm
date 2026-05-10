@@ -10,6 +10,7 @@ import { useMeetingsStore }        from '../../stores/meetingsStore.js'
 import { useOpportunitiesStore }   from '../../stores/opportunitiesStore.js'
 import { useLeadMeetings }         from '../../hooks/useMeetings.js'
 import { useEntityActivities }     from '../../hooks/useActivities.js'
+import { useLeadPermissions }      from '../../hooks/usePermissions.js'
 import { STATUS_CONFIG, formatMeetingDateTime } from '../../lib/meetingsData.js'
 import { Avatar }                  from '../ui/Avatar.jsx'
 import { Skeleton }                from '../ui/Skeleton.jsx'
@@ -31,6 +32,9 @@ export function LeadDetailPanel() {
   const { openAddModalWithPrefill: openOppWithPrefill } = useOpportunitiesStore()
 
   const lead = getSelectedLead()
+
+  // Permission object — drives all conditional rendering in this panel
+  const perms = useLeadPermissions(lead)
 
   // Fetch meetings linked to this lead (derived from the React Query meetings cache)
   const {
@@ -109,27 +113,33 @@ export function LeadDetailPanel() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={handleConvertToOpportunity}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors"
-                  title="Convert to Opportunity"
-                >
-                  <TrendingUp size={12} /> Convert
-                </button>
-                <button
-                  onClick={() => openEditModal(lead.id)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-colors"
-                  title="Edit lead"
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  title="Delete lead"
-                >
-                  <Trash2 size={15} />
-                </button>
+                {perms.canConvert && (
+                  <button
+                    onClick={handleConvertToOpportunity}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors"
+                    title="Convert to Opportunity"
+                  >
+                    <TrendingUp size={12} /> Convert
+                  </button>
+                )}
+                {perms.canEdit && (
+                  <button
+                    onClick={() => openEditModal(lead.id)}
+                    className="p-2 rounded-xl text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-colors"
+                    title="Edit lead"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                )}
+                {perms.canDelete && (
+                  <button
+                    onClick={handleDelete}
+                    className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    title="Delete lead"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
                 <button
                   onClick={closeDetail}
                   className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
@@ -206,14 +216,16 @@ export function LeadDetailPanel() {
               <Section
                 title="Meetings"
                 action={
-                  <button
-                    onClick={handleScheduleMeeting}
-                    className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
-                    title="Schedule a meeting for this lead"
-                  >
-                    <Plus size={12} />
-                    Schedule
-                  </button>
+                  perms.canSchedule ? (
+                    <button
+                      onClick={handleScheduleMeeting}
+                      className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+                      title="Schedule a meeting for this lead"
+                    >
+                      <Plus size={12} />
+                      Schedule
+                    </button>
+                  ) : null
                 }
               >
                 {meetingsLoading ? (

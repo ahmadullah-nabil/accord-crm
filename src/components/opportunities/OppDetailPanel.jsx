@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useOpportunitiesStore, OPP_STAGE_COLORS } from '../../stores/opportunitiesStore.js'
 import { useOpportunity, useDeleteOpportunity } from '../../hooks/useOpportunities.js'
+import { useOpportunityPermissions }  from '../../hooks/usePermissions.js'
 import { useMeetingsStore }    from '../../stores/meetingsStore.js'
 import { useTasksStore }       from '../../stores/tasksStore.js'
 import { useEntityActivities } from '../../hooks/useActivities.js'
@@ -56,6 +57,8 @@ export function OppDetailPanel() {
     detailPanelOpen ? 'opportunity' : null,
     detailPanelOpen ? selectedOppId : null,
   )
+
+  const perms = useOpportunityPermissions(opp)
 
   const handleDelete = () => {
     if (!opp) return
@@ -120,12 +123,16 @@ export function OppDetailPanel() {
                   )}
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => openEditModal(opp.id)} className="p-2 rounded-xl text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-colors" title="Edit">
-                    <Pencil size={15} />
-                  </button>
-                  <button onClick={handleDelete} className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
-                    <Trash2 size={15} />
-                  </button>
+                  {perms.canEdit && (
+                    <button onClick={() => openEditModal(opp.id)} className="p-2 rounded-xl text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-colors" title="Edit">
+                      <Pencil size={15} />
+                    </button>
+                  )}
+                  {perms.canDelete && (
+                    <button onClick={handleDelete} className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                   <button onClick={closeDetail} className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                     <X size={15} />
                   </button>
@@ -184,22 +191,24 @@ export function OppDetailPanel() {
               )}
 
               {/* Quick actions */}
-              <Section title="Actions">
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleScheduleMeeting}
-                    className="flex-1 text-xs font-semibold py-2 px-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Calendar size={12} /> Schedule Meeting
-                  </button>
-                  <button
-                    onClick={handleCreateTask}
-                    className="flex-1 text-xs font-semibold py-2 px-3 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <CheckCircle2 size={12} /> Add Task
-                  </button>
-                </div>
-              </Section>
+              {(perms.canEdit) && (
+                <Section title="Actions">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleScheduleMeeting}
+                      className="flex-1 text-xs font-semibold py-2 px-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Calendar size={12} /> Schedule Meeting
+                    </button>
+                    <button
+                      onClick={handleCreateTask}
+                      className="flex-1 text-xs font-semibold py-2 px-3 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <CheckCircle2 size={12} /> Add Task
+                    </button>
+                  </div>
+                </Section>
+              )}
 
               {/* Activity timeline */}
               <Section title="Activity" icon={Activity}>

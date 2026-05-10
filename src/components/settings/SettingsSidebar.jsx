@@ -14,12 +14,17 @@ const ICON_MAP = {
   Sliders:  SlidersHorizontal,
 }
 
-export function SettingsSidebar() {
+export function SettingsSidebar({ visibleSections }) {
   const { activeSection, setActiveSection } = useSettingsStore()
+
+  // Filter to only sections the current user can see (passed from SettingsPage)
+  const sections = visibleSections
+    ? SETTINGS_SECTIONS.filter((s) => visibleSections.includes(s.id))
+    : SETTINGS_SECTIONS
 
   return (
     <nav className="flex flex-col gap-0.5 w-full">
-      {SETTINGS_SECTIONS.map((section) => {
+      {sections.map((section) => {
         const Icon    = ICON_MAP[section.icon] || User
         const isActive = activeSection === section.id
 
