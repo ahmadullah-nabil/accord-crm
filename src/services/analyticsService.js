@@ -403,6 +403,26 @@ export async function getTeamPerformance(range) {
   const dateFrom = rangeToDate(range)
 
   try {
+    // Fetch real profile names first so we can filter performers to only
+    // people who exist in public.profiles. This eliminates any orphaned
+    // demo-name rows (e.g. "Alex Rivera") that were inserted into
+    // opportunities/tasks/meetings before real auth users were set up.
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('name, role')
+      .eq('is_active', true)
+
+    // Build a Set of real display names for fast lookup.
+    // If the profiles query fails or returns nothing, fall back to showing
+    // all unique assignee names so the widget still works on a fresh DB.
+    const realNames = profiles && profiles.length > 0
+      ? new Set(profiles.map((p) => p.name).filter(Boolean))
+      : null   // null = no filtering (fresh DB, no profiles yet)
+
+    const roleByName = profiles
+      ? Object.fromEntries(profiles.map((p) => [p.name, p.role]))
+      : {}
+
     const [oppsRes, tasksRes, meetingsRes] = await Promise.all([
       supabase.from('opportunities').select('assignee, value, stage, created_at').gte('created_at', dateFrom),
       supabase.from('tasks').select('assignee, status, created_at').gte('created_at', dateFrom),
@@ -413,14 +433,21 @@ export async function getTeamPerformance(range) {
     const tasks    = tasksRes.data    ?? []
     const meetings = meetingsRes.data ?? []
 
-    // Collect all unique names
-    const names = new Set([
+    // Collect unique assignee names from DB records,
+    // then filter to only real profile names (removes orphaned demo rows).
+    const allNames = new Set([
       ...opps.map((o) => o.assignee),
       ...tasks.map((t) => t.assignee),
       ...meetings.map((m) => m.organizer),
     ].filter(Boolean))
 
-    return Array.from(names).map((name) => {
+    const filteredNames = realNames
+      ? Array.from(allNames).filter((n) => realNames.has(n))
+      : Array.from(allNames)
+
+    if (filteredNames.length === 0) return []
+
+    return filteredNames.map((name) => {
       const myOpps     = opps.filter((o) => o.assignee === name)
       const myWon      = myOpps.filter((o) => o.stage === 'Won')
       const myTasks    = tasks.filter((t) => t.assignee === name)
@@ -431,6 +458,7 @@ export async function getTeamPerformance(range) {
 
       return {
         name,
+        role:     roleByName[name] ?? '',
         deals,
         revenue,
         meetings: myMeetings.length,
