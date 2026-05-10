@@ -1,6 +1,7 @@
 import React from 'react'
 import { Search, SlidersHorizontal, Plus, LayoutList, Kanban, X, User } from 'lucide-react'
-import { useLeadsStore, STAGES, PRIORITIES, SOURCES, ASSIGNEES } from '../../stores/leadsStore.js'
+import { useLeadsStore, STAGES, PRIORITIES, SOURCES } from '../../stores/leadsStore.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 import { useAuthStore } from '../../stores/authStore.js'
 
 export function LeadsToolbar() {
@@ -24,6 +25,7 @@ export function LeadsToolbar() {
   const hasFilters =
     searchQuery || stageFilter !== 'All' || priorityFilter !== 'All' ||
     sourceFilter !== 'All' || assigneeFilter !== 'All'
+  const { names: assigneeNames } = useAssignableMembers()
 
   return (
     <div className="card px-4 py-3 space-y-3">
@@ -98,7 +100,7 @@ export function LeadsToolbar() {
         <FilterSelect label="Stage"    value={stageFilter}    onChange={setStageFilter}    options={STAGES} />
         <FilterSelect label="Priority" value={priorityFilter} onChange={setPriorityFilter} options={PRIORITIES} />
         <FilterSelect label="Source"   value={sourceFilter}   onChange={setSourceFilter}   options={SOURCES} />
-        <FilterSelect label="Assignee" value={assigneeFilter} onChange={setAssigneeFilter} options={ASSIGNEES} />
+        <FilterSelect label="Assignee" value={assigneeFilter} onChange={setAssigneeFilter} options={assigneeNames} />
 
         {hasFilters && (
           <button

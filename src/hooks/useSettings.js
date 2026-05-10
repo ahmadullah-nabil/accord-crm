@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore }        from '../stores/authStore.js'
+import { useMyProfileData, useUpdateProfile as useUpdateTeamProfile, teamKeys } from './useTeam.js'
 import {
-  fetchProfileSettings,
   fetchCompanySettings,
   fetchNotificationSettings,
   fetchAppearanceSettings,
@@ -29,12 +30,9 @@ const STALE = 1000 * 60 * 5 // 5 minutes — settings change rarely
 
 // ── Fetch hooks ───────────────────────────────────────────────────────────────
 
+// Profile: reads real Supabase public.profiles via useMyProfileData
 export function useProfileSettings() {
-  return useQuery({
-    queryKey: settingsKeys.profile(),
-    queryFn:  fetchProfileSettings,
-    staleTime: STALE,
-  })
+  return useMyProfileData()
 }
 
 export function useCompanySettings() {
@@ -79,12 +77,29 @@ export function usePreferencesSettings() {
 
 // ── Mutation hooks ────────────────────────────────────────────────────────────
 
+// Profile update: persists to Supabase public.profiles
+// ProfileSection calls mutateAsync(form) where form has { name, department, phone, ... }
+// We read the auth user id and call updateProfile(id, payload) via the team hook.
 export function useUpdateProfile() {
-  const qc = useQueryClient()
+  const user           = useAuthStore((s) => s.user)
+  const teamMutation   = useUpdateTeamProfile()
+  const qc             = useQueryClient()
+
   return useMutation({
-    mutationFn: updateProfileSettings,
-    onSuccess: (updated) => {
-      qc.setQueryData(settingsKeys.profile(), updated)
+    mutationFn: async (data) => {
+      if (!user?.id) throw new Error('Not authenticated')
+      // Map the settings form fields → profile fields
+      const payload = {
+        name:       data.name,
+        department: data.department,
+        phone:      data.phone,
+      }
+      return teamMutation.mutateAsync({ id: user.id, data: payload })
+    },
+    onSuccess: () => {
+      // Invalidate both the profile data and the members list
+      qc.invalidateQueries({ queryKey: teamKeys.myProfile(user?.id) })
+      qc.invalidateQueries({ queryKey: teamKeys.members() })
     },
   })
 }

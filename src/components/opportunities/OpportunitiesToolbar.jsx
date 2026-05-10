@@ -2,7 +2,7 @@ import React from 'react'
 import { Search, Plus, LayoutList, Kanban, X, User, SlidersHorizontal } from 'lucide-react'
 import { useOpportunitiesStore, OPPORTUNITY_STAGES } from '../../stores/opportunitiesStore.js'
 import { useAuthStore }   from '../../stores/authStore.js'
-import { TEAM_MEMBER_NAMES } from '../../lib/users.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 export function OpportunitiesToolbar({ total, filtered }) {
   const {
@@ -14,6 +14,7 @@ export function OpportunitiesToolbar({ total, filtered }) {
   } = useOpportunitiesStore()
 
   const user = useAuthStore((s) => s.user)
+  const { names: assigneeNames } = useAssignableMembers()
   const isMineActive =
     assigneeFilter === (user?.name ?? '') && stageFilter === 'All' && !searchQuery
   const hasFilters = searchQuery || stageFilter !== 'All' || assigneeFilter !== 'All'
@@ -79,7 +80,7 @@ export function OpportunitiesToolbar({ total, filtered }) {
       <div className="flex items-center gap-2 flex-wrap">
         <SlidersHorizontal size={13} className="text-gray-400 flex-shrink-0" />
         <FilterSelect label="Stage"    value={stageFilter}    onChange={setStageFilter}    options={OPPORTUNITY_STAGES} />
-        <FilterSelect label="Assignee" value={assigneeFilter} onChange={setAssigneeFilter} options={TEAM_MEMBER_NAMES} />
+        <FilterSelect label="Assignee" value={assigneeFilter} onChange={setAssigneeFilter} options={assigneeNames} />
         {hasFilters && (
           <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium">
             <X size={11} /> Clear

@@ -2,7 +2,8 @@ import React from 'react'
 import { Search, SlidersHorizontal, Plus, X, User } from 'lucide-react'
 import { useMeetingsStore }                    from '../../stores/meetingsStore.js'
 import { useAuthStore }                        from '../../stores/authStore.js'
-import { MEETING_STATUSES, MEETING_TYPES, MEETING_ORGANIZERS } from '../../lib/meetingsData.js'
+import { MEETING_STATUSES, MEETING_TYPES } from '../../lib/meetingsData.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 export function MeetingsToolbar({ total, filtered }) {
   const {
@@ -24,6 +25,7 @@ export function MeetingsToolbar({ total, filtered }) {
     statusFilter    !== 'All' ||
     typeFilter      !== 'All' ||
     organizerFilter !== 'All'
+  const { names: assigneeNames } = useAssignableMembers()
   return (
     <div className="card px-4 py-3 space-y-3">
       {/* Quick tabs: All / Mine */}
@@ -99,7 +101,7 @@ export function MeetingsToolbar({ total, filtered }) {
           label="Organizer"
           value={organizerFilter}
           onChange={setOrganizerFilter}
-          options={MEETING_ORGANIZERS}
+          options={assigneeNames}
         />
 
         {hasFilters && (

@@ -2,7 +2,8 @@ import React from 'react'
 import { Search, SlidersHorizontal, Plus, X, User, AlertCircle, Clock } from 'lucide-react'
 import { useTasksStore }   from '../../stores/tasksStore.js'
 import { useAuthStore }    from '../../stores/authStore.js'
-import { TASK_STATUSES, TASK_PRIORITIES, TASK_ASSIGNEES } from '../../lib/tasksData.js'
+import { TASK_STATUSES, TASK_PRIORITIES } from '../../lib/tasksData.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 const QUICK_TABS = [
   { id: 'all',      label: 'All',      icon: null          },
@@ -32,6 +33,7 @@ export function TasksToolbar({ total, filtered }) {
 
   const hasFilters =
     searchQuery || statusFilter !== 'All' || priorityFilter !== 'All' || assigneeFilter !== 'All'
+  const { names: assigneeNames } = useAssignableMembers()
 
   const applyQuickTab = (tabId) => {
     clearFilters()
@@ -121,7 +123,7 @@ export function TasksToolbar({ total, filtered }) {
           label="Assignee"
           value={assigneeFilter}
           onChange={setAssigneeFilter}
-          options={TASK_ASSIGNEES}
+          options={assigneeNames}
         />
 
         {hasFilters && (

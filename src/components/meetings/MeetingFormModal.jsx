@@ -6,9 +6,10 @@ import {
 import { useMeetingsStore }                               from '../../stores/meetingsStore.js'
 import { useMeeting, useCreateMeeting, useUpdateMeeting } from '../../hooks/useMeetings.js'
 import {
-  MEETING_STATUSES, MEETING_TYPES, MEETING_ORGANIZERS,
+  MEETING_STATUSES, MEETING_TYPES,
   RELATED_TYPES, LOCATION_TYPES, DURATION_OPTIONS,
 } from '../../lib/meetingsData.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 const EMPTY = {
   title:        '',
@@ -41,6 +42,7 @@ export function MeetingFormModal() {
   const isEdit = editModalOpen
 
   const { data: existingMeeting } = useMeeting(isEdit ? selectedMeetingId : null)
+  const { names: organizerNames } = useAssignableMembers()
   const createMutation = useCreateMeeting()
   const updateMutation = useUpdateMeeting()
 
@@ -227,7 +229,7 @@ export function MeetingFormModal() {
             <Field label="Organizer" error={errors.organizer} icon={Users} required>
               <select className="input-base" value={form.organizer} onChange={setField('organizer')}>
                 <option value="">Select organizer…</option>
-                {MEETING_ORGANIZERS.map((o) => <option key={o} value={o}>{o}</option>)}
+                {organizerNames.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </Field>
 

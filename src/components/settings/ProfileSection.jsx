@@ -32,8 +32,8 @@ export function ProfileSection() {
 
   const handleSave = async () => {
     await updateMutation.mutateAsync(form)
-    // Sync name back to authStore so Navbar/Avatar updates immediately
-    updateUser({ name: form.name, email: form.email, department: form.department })
+    // Sync name/department back to authStore so Navbar/Avatar updates immediately
+    updateUser({ name: form.name, department: form.department })
     setDirty(false)
   }
 
@@ -59,19 +59,19 @@ export function ProfileSection() {
 
         <FieldGrid cols={2}>
           <Field label="Full Name" required>
-            <input className="input-base" value={form.name} onChange={set('name')} placeholder="Alex Rivera" />
+            <input className="input-base" value={form.name} onChange={set('name')} placeholder="Your name" />
           </Field>
-          <Field label="Email Address" required>
-            <input type="email" className="input-base" value={form.email} onChange={set('email')} placeholder="alex@accord.io" />
+          <Field label="Email Address" hint="Managed by Supabase Auth — contact admin to change.">
+            <input type="email" className="input-base bg-gray-50 text-gray-500 cursor-not-allowed" value={form.email} readOnly />
           </Field>
           <Field label="Phone Number">
-            <input type="tel" className="input-base" value={form.phone} onChange={set('phone')} placeholder="+1 (555) 000-0000" />
+            <input type="tel" className="input-base" value={form.phone} onChange={set('phone')} placeholder="+880…" />
           </Field>
-          <Field label="Job Title">
-            <input className="input-base" value={form.title} onChange={set('title')} placeholder="Sales Manager" />
+          <Field label="Role">
+            <input className="input-base bg-gray-50 text-gray-500 cursor-not-allowed" value={form.title} readOnly title="Role is managed by your administrator" />
           </Field>
           <Field label="Department">
-            <input className="input-base" value={form.department} onChange={set('department')} placeholder="Sales" />
+            <input className="input-base" value={form.department} onChange={set('department')} placeholder="Sales, Engineering…" />
           </Field>
         </FieldGrid>
 

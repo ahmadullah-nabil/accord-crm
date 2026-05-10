@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, User, Building2, Mail, Phone, DollarSign, Tag } from 'lucide-react'
-import { useLeadsStore, STAGES, PRIORITIES, SOURCES, ASSIGNEES } from '../../stores/leadsStore.js'
+import { useLeadsStore, STAGES, PRIORITIES, SOURCES } from '../../stores/leadsStore.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 const EMPTY = {
   name: '', company: '', email: '', phone: '',
@@ -13,6 +14,8 @@ export function LeadFormModal() {
     addModalOpen, editModalOpen, closeAddModal, closeEditModal,
     addLead, updateLead, getSelectedLead,
   } = useLeadsStore()
+
+  const { names: assigneeNames } = useAssignableMembers()
 
   const isOpen = addModalOpen || editModalOpen
   const isEdit = editModalOpen
@@ -144,7 +147,7 @@ export function LeadFormModal() {
             <Field label="Assignee" error={errors.assignee}>
               <select className="input-base" value={form.assignee} onChange={set('assignee')}>
                 <option value="">Select assignee…</option>
-                {ASSIGNEES.map((a) => <option key={a}>{a}</option>)}
+                {assigneeNames.map((a) => <option key={a}>{a}</option>)}
               </select>
             </Field>
 

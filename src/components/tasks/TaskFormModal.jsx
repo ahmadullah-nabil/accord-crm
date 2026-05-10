@@ -3,8 +3,9 @@ import { X, FileText, Calendar, User, Link2, Tag } from 'lucide-react'
 import { useTasksStore }                             from '../../stores/tasksStore.js'
 import { useTask, useCreateTask, useUpdateTask }     from '../../hooks/useTasks.js'
 import {
-  TASK_STATUSES, TASK_PRIORITIES, TASK_ASSIGNEES, RELATED_TYPES,
+  TASK_STATUSES, TASK_PRIORITIES, RELATED_TYPES,
 } from '../../lib/tasksData.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 const EMPTY = {
   title:        '',
@@ -31,6 +32,7 @@ export function TaskFormModal() {
   const isEdit = editModalOpen
 
   const { data: existingTask } = useTask(isEdit ? selectedTaskId : null)
+  const { names: assigneeNames } = useAssignableMembers()
 
   const createMutation = useCreateTask()
   const updateMutation = useUpdateTask()
@@ -168,7 +170,7 @@ export function TaskFormModal() {
               <Field label="Assignee" error={errors.assignee} icon={User} required>
                 <select className="input-base" value={form.assignee} onChange={setField('assignee')}>
                   <option value="">Select assignee…</option>
-                  {TASK_ASSIGNEES.map((a) => <option key={a} value={a}>{a}</option>)}
+                  {assigneeNames.map((a) => <option key={a} value={a}>{a}</option>)}
                 </select>
               </Field>
             </div>

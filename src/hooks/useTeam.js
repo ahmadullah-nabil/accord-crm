@@ -1,24 +1,17 @@
 // ─── Team / Hierarchy React Query Hooks ──────────────────────────────────────
 //
-// All hooks here read from teamService.js which falls back to static
-// TEAM_MEMBERS when the Supabase table isn't ready — zero runtime errors.
+// All hooks read from teamService.js which queries public.profiles.
+// useAssignableMembers() is the single source of truth for all dropdowns.
+// useMyProfileData()    is the single source of truth for the settings page.
 //
-// Cache strategy
-// ──────────────
-// Team structure changes rarely → 10-minute staleTime.
-// All hooks share queryKeys.team.* so a single invalidation refreshes them all.
-//
-// RBAC readiness
-// ──────────────
-// useMySubordinates()    → used by manager dashboards for scoped views
-// useVisibleMemberIds()  → used by filter selectors to scope data
-// Both are no-ops for Employee/Executive roles.
+// Cache strategy: 10-minute staleTime — team structure changes rarely.
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore }   from '../stores/authStore.js'
 import {
   getTeamMembers,
   getProfileById,
+  getMyProfile,
   getTeams,
   updateProfile,
 } from '../services/teamService.js'
@@ -28,7 +21,6 @@ import {
   getManagerChain,
   getVisibleMemberIds,
   isManagerRole,
-  TEAM_MEMBERS as STATIC_MEMBERS,
 } from '../lib/users.js'
 
 // ── Query keys ────────────────────────────────────────────────────────────────
@@ -36,29 +28,76 @@ export const teamKeys = {
   members:   () => ['team', 'members'],
   member:    (id) => ['team', 'member', id],
   teams:     () => ['team', 'teams'],
-  hierarchy: () => ['team', 'hierarchy'],
+  myProfile: (id) => ['team', 'myProfile', id],
 }
 
 const STALE = 1000 * 60 * 10  // 10 minutes
 
-// ── All team members ───────────────────────────────────────────────────────────
+// ── All team members ──────────────────────────────────────────────────────────
 export function useTeamMembers() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
   return useQuery({
-    queryKey: teamKeys.members(),
-    queryFn:  getTeamMembers,
+    queryKey:       teamKeys.members(),
+    queryFn:        getTeamMembers,
+    // placeholderData (not initialData) — shown while loading but does NOT
+    // prevent the query from firing. initialData was the bug: it told React
+    // Query the cache was already populated and fresh, so getTeamMembers()
+    // was never called.
+    placeholderData: [],
+    staleTime:      0,             // always re-fetch on mount so dropdowns populate
+    gcTime:         1000 * 60 * 10, // keep in memory for 10 min after last subscriber
+    retry:          2,
+    enabled:        isAuthenticated,
+  })
+}
+
+// ── useAssignableMembers — single source for all assignment dropdowns ──────────
+// Returns { members: Member[], names: string[], isLoading: boolean }
+// All form modals call this instead of importing static constants.
+export function useAssignableMembers() {
+  const { data: members = [], isLoading } = useTeamMembers()
+  return {
+    members,
+    names:     members.map((m) => m.name).filter(Boolean),
+    isLoading,
+  }
+}
+
+// ── useMyProfileData — real Supabase profile for the settings page ────────────
+// Reads the currently authenticated user's own profile from public.profiles.
+// The select() maps it to the shape ProfileSection already expects.
+export function useMyProfileData() {
+  const user            = useAuthStore((s) => s.user)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  return useQuery({
+    queryKey: teamKeys.myProfile(user?.id),
+    queryFn:  () => getMyProfile(user?.id),
+    enabled:   isAuthenticated && Boolean(user?.id),
     staleTime: STALE,
-    enabled:   isAuthenticated,
-    // Always return at least the static list
-    placeholderData: STATIC_MEMBERS,
+    select: (profile) => profile ? {
+      name:       profile.name       || user?.name       || '',
+      email:      profile.email      || user?.email      || '',
+      phone:      profile.phone      || '',
+      title:      profile.role       || user?.role       || 'Employee',
+      department: profile.department || user?.department || '',
+      bio:        '',
+      timezone:   'Asia/Dhaka',
+      language:   'English',
+      dateFormat: 'DD/MM/YYYY',
+      // extra fields
+      role:      profile.role     || 'Employee',
+      avatarUrl: profile.avatarUrl || null,
+      managerId: profile.managerId || null,
+      _id:       profile.id,
+    } : null,
   })
 }
 
 // ── Single member profile ──────────────────────────────────────────────────────
 export function useTeamMember(id) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-
   return useQuery({
     queryKey: teamKeys.member(id),
     queryFn:  () => getProfileById(id),
@@ -70,7 +109,6 @@ export function useTeamMember(id) {
 // ── All teams (org units) ─────────────────────────────────────────────────────
 export function useTeams() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-
   return useQuery({
     queryKey: teamKeys.teams(),
     queryFn:  getTeams,
@@ -79,63 +117,43 @@ export function useTeams() {
   })
 }
 
-// ── Derived: hierarchy for current user ───────────────────────────────────────
+// ── Derived hierarchy hooks ───────────────────────────────────────────────────
 
-/** Direct reports of the current auth user */
 export function useMyDirectReports() {
-  const user   = useAuthStore((s) => s.user)
-  const { data: members = STATIC_MEMBERS } = useTeamMembers()
-
-  if (!user?.id) return []
+  const user              = useAuthStore((s) => s.user)
+  const { data: members } = useTeamMembers()
+  if (!user?.id || !members?.length) return []
   return getDirectReports(user.id, members)
 }
 
-/** All subordinates (recursive) of the current auth user */
 export function useMySubordinates() {
-  const user   = useAuthStore((s) => s.user)
-  const { data: members = STATIC_MEMBERS } = useTeamMembers()
-
-  if (!user?.id) return []
+  const user              = useAuthStore((s) => s.user)
+  const { data: members } = useTeamMembers()
+  if (!user?.id || !members?.length) return []
   return getAllSubordinates(user.id, members)
 }
 
-/** Manager chain above the current auth user */
 export function useMyManagerChain() {
-  const user   = useAuthStore((s) => s.user)
-  const { data: members = STATIC_MEMBERS } = useTeamMembers()
-
-  if (!user?.id) return []
+  const user              = useAuthStore((s) => s.user)
+  const { data: members } = useTeamMembers()
+  if (!user?.id || !members?.length) return []
   return getManagerChain(user.id, members)
 }
 
-/**
- * IDs of all members visible to the current user based on their role.
- * Admin/AGM → all.
- * Manager   → self + subordinates.
- * Employee  → self only.
- *
- * Used by filter dropdowns to scope assignee lists.
- * UI-only hint — real scoping is enforced in RLS.
- */
 export function useVisibleMemberIds() {
-  const user   = useAuthStore((s) => s.user)
-  const { data: members = STATIC_MEMBERS } = useTeamMembers()
-
-  if (!user) return []
+  const user              = useAuthStore((s) => s.user)
+  const { data: members } = useTeamMembers()
+  if (!user || !members?.length) return []
   const me = members.find((m) => m.id === user.id || m.name === user.name) ?? null
   return getVisibleMemberIds(me, members)
 }
 
-/**
- * Whether the current user has manager-level access.
- * Safe to call even before members are loaded (falls back on auth user role).
- */
 export function useIsManager() {
   const user = useAuthStore((s) => s.user)
   return isManagerRole(user?.role ?? '')
 }
 
-// ── Update profile mutation ────────────────────────────────────────────────────
+// ── Update profile mutation ───────────────────────────────────────────────────
 export function useUpdateProfile() {
   const qc = useQueryClient()
 
@@ -144,9 +162,10 @@ export function useUpdateProfile() {
     onSuccess: (updated, { id }) => {
       if (updated) {
         qc.setQueryData(teamKeys.member(id), updated)
-        qc.setQueryData(teamKeys.members(), (old = STATIC_MEMBERS) =>
+        qc.setQueryData(teamKeys.members(), (old = []) =>
           old.map((m) => (m.id === id ? updated : m))
         )
+        qc.invalidateQueries({ queryKey: teamKeys.myProfile(id) })
       }
     },
     onSettled: () => {

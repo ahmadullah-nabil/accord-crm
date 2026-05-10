@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X, DollarSign, TrendingUp, Building2, Calendar, User, Tag } from 'lucide-react'
 import { useOpportunitiesStore, OPPORTUNITY_STAGES, PROBABILITY_BY_STAGE } from '../../stores/opportunitiesStore.js'
 import { useCreateOpportunity, useUpdateOpportunity, useOpportunity } from '../../hooks/useOpportunities.js'
-import { TEAM_MEMBER_NAMES } from '../../lib/users.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 const EMPTY = {
   title: '', company: '', email: '', phone: '',
@@ -20,6 +20,7 @@ export function OppFormModal() {
   const isEdit = editModalOpen
 
   const { data: existing } = useOpportunity(isEdit ? selectedOppId : null)
+  const { names: assigneeNames } = useAssignableMembers()
   const createMutation = useCreateOpportunity()
   const updateMutation = useUpdateOpportunity()
 
@@ -154,7 +155,7 @@ export function OppFormModal() {
           <Field label="Assignee" error={errors.assignee} required>
             <select className="input-base" value={form.assignee} onChange={set('assignee')}>
               <option value="">Select assignee…</option>
-              {TEAM_MEMBER_NAMES.map((n) => <option key={n}>{n}</option>)}
+              {assigneeNames.map((n) => <option key={n}>{n}</option>)}
             </select>
           </Field>
 

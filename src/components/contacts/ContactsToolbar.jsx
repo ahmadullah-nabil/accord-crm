@@ -1,7 +1,8 @@
 import React from 'react'
 import { Search, SlidersHorizontal, Plus, X } from 'lucide-react'
 import { useContactsStore }                  from '../../stores/contactsStore.js'
-import { CONTACT_TYPES, CONTACT_STATUSES, CONTACT_ASSIGNEES } from '../../lib/contactsData.js'
+import { CONTACT_TYPES, CONTACT_STATUSES } from '../../lib/contactsData.js'
+import { useAssignableMembers } from '../../hooks/useTeam.js'
 
 export function ContactsToolbar({ total, filtered }) {
   const {
@@ -14,7 +15,7 @@ export function ContactsToolbar({ total, filtered }) {
 
   const hasFilters =
     searchQuery || typeFilter !== 'All' || statusFilter !== 'All' || assigneeFilter !== 'All'
-
+  const { names: assigneeNames } = useAssignableMembers()
   return (
     <div className="card px-4 py-3 space-y-3">
       {/* Row 1: search + count + add */}
@@ -73,7 +74,7 @@ export function ContactsToolbar({ total, filtered }) {
           label="Assignee"
           value={assigneeFilter}
           onChange={setAssigneeFilter}
-          options={CONTACT_ASSIGNEES}
+          options={assigneeNames}
         />
 
         {hasFilters && (
