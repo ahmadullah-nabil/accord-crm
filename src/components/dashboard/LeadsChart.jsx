@@ -3,7 +3,6 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from 'recharts'
-import { LEADS_MONTHLY } from '../../lib/dashboardData.js'
 import { Skeleton } from '../ui/Skeleton.jsx'
 
 function CustomTooltip({ active, payload, label }) {
@@ -24,8 +23,19 @@ function CustomTooltip({ active, payload, label }) {
   )
 }
 
-export function LeadsChart({ isLoading = false }) {
-  const data = LEADS_MONTHLY.slice(-6)
+// Normalise from analyticsService (label) to chart key (month)
+function normalise(rows) {
+  return (rows ?? []).map((r) => ({
+    ...r,
+    month: r.month ?? r.label ?? '',
+    new:   Number(r.new)  || 0,
+    won:   Number(r.won)  || 0,
+    lost:  Number(r.lost) || 0,
+  }))
+}
+
+export function LeadsChart({ data = [], isLoading = false }) {
+  const chartData = normalise(data).slice(-6)
 
   if (isLoading) {
     return (
@@ -41,21 +51,27 @@ export function LeadsChart({ isLoading = false }) {
     <div className="card p-5">
       <div className="mb-4">
         <h3 className="font-display font-bold text-gray-900 text-base">Lead Statistics</h3>
-        <p className="text-xs text-gray-400 mt-0.5">New, won and lost leads (6 months)</p>
+        <p className="text-xs text-gray-400 mt-0.5">New, won and lost leads</p>
       </div>
 
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="28%">
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-          <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'DM Sans, sans-serif' }} axisLine={false} tickLine={false} dy={6} />
-          <YAxis tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'DM Sans, sans-serif' }} axisLine={false} tickLine={false} width={28} />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc', radius: 4 }} />
-          <Bar dataKey="new"  name="New"  fill="#6366f1" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="won"  name="Won"  fill="#14b8a6" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="lost" name="Lost" fill="#f87171" radius={[3, 3, 0, 0]} />
-          <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 11, color: '#64748b', paddingTop: 12 }} />
-        </BarChart>
-      </ResponsiveContainer>
+      {chartData.length === 0 ? (
+        <div className="h-[200px] flex flex-col items-center justify-center text-center">
+          <p className="text-xs text-gray-400">No lead data yet</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="28%">
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'DM Sans, sans-serif' }} axisLine={false} tickLine={false} dy={6} />
+            <YAxis tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'DM Sans, sans-serif' }} axisLine={false} tickLine={false} width={28} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc', radius: 4 }} />
+            <Bar dataKey="new"  name="New"  fill="#6366f1" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="won"  name="Won"  fill="#14b8a6" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="lost" name="Lost" fill="#f87171" radius={[3, 3, 0, 0]} />
+            <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 11, color: '#64748b', paddingTop: 12 }} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </div>
   )
 }

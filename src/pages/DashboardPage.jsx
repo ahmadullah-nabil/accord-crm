@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useAuthStore } from '../stores/authStore.js'
-import { KPI_DATA } from '../lib/dashboardData.js'
+import React from 'react'
+import { useAuthStore }     from '../stores/authStore.js'
 import { KpiCard }          from '../components/dashboard/KpiCard.jsx'
 import { RevenueChart }     from '../components/dashboard/RevenueChart.jsx'
 import { PipelineFunnel }   from '../components/dashboard/PipelineFunnel.jsx'
@@ -9,71 +8,138 @@ import { TopPerformers }    from '../components/dashboard/TopPerformers.jsx'
 import { QuickActions }     from '../components/dashboard/QuickActions.jsx'
 import { LeadsChart }       from '../components/dashboard/LeadsChart.jsx'
 import { MyWorkspace }      from '../components/dashboard/MyWorkspace.jsx'
+import {
+  useDashboardKpi,
+  useDashboardRevenue,
+  useDashboardPipeline,
+  useDashboardPerformers,
+  useDashboardActivity,
+  useDashboardLeads,
+} from '../hooks/useDashboard.js'
+import {
+  DollarSign, Target, TrendingUp, CheckSquare,
+  Calendar, Layers, BarChart2, Users,
+} from 'lucide-react'
 
-function WelcomeBanner({ user }) {
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-  const firstName = user?.name?.split(' ')[0] || 'there'
-  return (
-    <div className="relative rounded-2xl overflow-hidden p-5 mb-0" style={{ background:'linear-gradient(135deg,#0f1923 0%,#1a2d40 50%,#0d3d35 100%)' }}>
-      <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
-      <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl translate-y-1/2 pointer-events-none" />
-      <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <p className="text-teal-400 text-sm font-medium mb-0.5">{greeting},</p>
-          <h2 className="font-display font-bold text-white text-2xl mb-1">{firstName} 👋</h2>
-          <p className="text-[#8fa3b8] text-sm">Here's what's happening with your pipeline today.</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {[
-            { label:'Open Leads', value:'1,284', color:'bg-teal-500/20 text-teal-300 border-teal-500/30' },
-            { label:'Due Today',  value:'8 tasks', color:'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-            { label:'Meetings',   value:'3 today', color:'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-          ].map(s => (
-            <div key={s.label} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${s.color} text-xs font-medium`}>
-              <span>{s.label}:</span><span className="font-bold">{s.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
+// Maps KPI keys → card display config
+const KPI_CONFIG = [
+  { key: 'totalRevenue',       icon: DollarSign,  color: 'teal',    format: 'currency' },
+  { key: 'activeLeads',        icon: Target,      color: 'blue',    format: 'num'      },
+  { key: 'conversionRate',     icon: TrendingUp,  color: 'emerald', format: 'pct'      },
+  { key: 'dealsWon',           icon: BarChart2,   color: 'purple',  format: 'num'      },
+  { key: 'taskCompletionRate', icon: CheckSquare, color: 'amber',   format: 'pct'      },
+  { key: 'meetingsConducted',  icon: Calendar,    color: 'indigo',  format: 'num'      },
+  { key: 'avgDealSize',        icon: Layers,      color: 'teal',    format: 'currency' },
+  { key: 'pipelineValue',      icon: Users,       color: 'blue',    format: 'currency' },
+]
+
+function fmtKpiValue(raw, format) {
+  const v = Number(raw ?? 0)
+  if (format === 'currency') {
+    if (v >= 1_000_000) return `৳${(v / 1_000_000).toFixed(2)}M`
+    if (v >= 1_000)     return `৳${(v / 1_000).toFixed(0)}K`
+    return `৳${v}`
+  }
+  if (format === 'pct') return `${v.toFixed(1)}%`
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000)     return `${(v / 1_000).toFixed(0)}K`
+  return String(v)
 }
 
 export function DashboardPage() {
-  const { user } = useAuthStore()
-  const [isLoading, setIsLoading] = useState(true)
-  useEffect(() => { const t = setTimeout(() => setIsLoading(false), 900); return () => clearTimeout(t) }, [])
+  const user = useAuthStore((s) => s.user)
+
+  const kpi        = useDashboardKpi()
+  const revenue    = useDashboardRevenue()
+  const pipeline   = useDashboardPipeline()
+  const performers = useDashboardPerformers()
+  const activity   = useDashboardActivity()
+  const leads      = useDashboardLeads()
+
+  // Build KPI cards from real query data
+  const kpiCards = kpi.data
+    ? KPI_CONFIG.map((cfg) => {
+        const entry = kpi.data[cfg.key] ?? { value: 0, trend: 0, label: cfg.key }
+        return {
+          id:     cfg.key,
+          label:  entry.label,
+          value:  fmtKpiValue(entry.value, cfg.format),
+          trend:  Number(entry.trend ?? 0),
+          period: 'Last 30 days',
+          icon:   cfg.icon,
+          color:  cfg.color,
+        }
+      })
+    : []
+
+  const anyLoading = kpi.isLoading || revenue.isLoading || pipeline.isLoading
 
   return (
     <div className="space-y-5 max-w-[1600px]">
-      <WelcomeBanner user={user} />
-
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {KPI_DATA.map(kpi => (
-          <KpiCard key={kpi.id} label={kpi.label} value={kpi.value} trend={kpi.trend} period={kpi.period} icon={kpi.icon} color={kpi.color} isLoading={isLoading} />
-        ))}
+      {/* Welcome bar */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="font-display font-bold text-gray-900 text-xl leading-tight">
+            {user?.name ? `Welcome back, ${user.name.split(' ')[0]}` : 'Dashboard'}
+          </h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Your CRM at a glance · Last 30 days
+          </p>
+        </div>
+        <QuickActions />
       </div>
 
-      {/* Quick Actions */}
-      <QuickActions />
+      {/* KPI Cards — real data */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
+        {kpi.isLoading || kpiCards.length === 0
+          ? KPI_CONFIG.map((cfg) => (
+              <KpiCard
+                key={cfg.key}
+                label={cfg.key}
+                value="—"
+                trend={0}
+                period="Last 30 days"
+                icon={cfg.icon}
+                color={cfg.color}
+                isLoading={kpi.isLoading}
+              />
+            ))
+          : kpiCards.map((kpi) => (
+              <KpiCard
+                key={kpi.id}
+                label={kpi.label}
+                value={kpi.value}
+                trend={kpi.trend}
+                period={kpi.period}
+                icon={kpi.icon}
+                color={kpi.color}
+                isLoading={false}
+              />
+            ))
+        }
+      </div>
 
-      {/* My Workspace — personalized tasks, meetings, pipeline */}
-      <MyWorkspace isLoading={isLoading} />
+      {/* My Workspace (personalized — uses its own hooks) */}
+      <MyWorkspace isLoading={anyLoading} />
 
-      {/* Revenue + Pipeline */}
+      {/* Revenue + Pipeline — real data */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-        <div className="xl:col-span-3"><RevenueChart isLoading={isLoading} /></div>
-        <div className="xl:col-span-2"><PipelineFunnel isLoading={isLoading} /></div>
+        <div className="xl:col-span-3">
+          <RevenueChart data={revenue.data ?? []} isLoading={revenue.isLoading} />
+        </div>
+        <div className="xl:col-span-2">
+          <PipelineFunnel data={pipeline.data ?? []} isLoading={pipeline.isLoading} />
+        </div>
       </div>
 
-      {/* Activity + Performers + Leads */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-1"><ActivityTimeline isLoading={isLoading} /></div>
+      {/* Activity + Performers + Leads — real data */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+        <div className="xl:col-span-1">
+          <ActivityTimeline data={activity.data ?? []} isLoading={activity.isLoading} />
+        </div>
         <div className="xl:col-span-2 flex flex-col gap-4">
-          <TopPerformers isLoading={isLoading} />
-          <LeadsChart isLoading={isLoading} />
+          <TopPerformers data={performers.data ?? []} isLoading={performers.isLoading} />
+          <LeadsChart data={leads.data ?? []} isLoading={leads.isLoading} />
         </div>
       </div>
     </div>

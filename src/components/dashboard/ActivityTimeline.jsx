@@ -4,14 +4,12 @@ import {
   UserPlus, XCircle, Phone, CheckCircle2,
   RotateCcw, Activity,
 } from 'lucide-react'
-import { useActivities }   from '../../hooks/useActivities.js'
-import { ACTIVITY_DATA }   from '../../lib/dashboardData.js'
-import { Avatar }          from '../ui/Avatar.jsx'
-import { Skeleton }        from '../ui/Skeleton.jsx'
+import { Avatar }   from '../ui/Avatar.jsx'
+import { Skeleton } from '../ui/Skeleton.jsx'
 
 // ── Type → visual config ──────────────────────────────────────────────────────
 const TYPE_CONFIG = {
-  // Real activity types (matches ACTIVITY_TYPES in activityService.js)
+  // Real activity types — matches ACTIVITY_TYPES in activityService.js
   lead_created:       { icon: UserPlus,    bg: 'bg-indigo-50', color: 'text-indigo-600', dot: 'bg-indigo-400'  },
   lead_stage_changed: { icon: UserCheck,   bg: 'bg-teal-50',   color: 'text-teal-600',   dot: 'bg-teal-400'    },
   lead_updated:       { icon: UserCheck,   bg: 'bg-teal-50',   color: 'text-teal-600',   dot: 'bg-teal-400'    },
@@ -21,12 +19,13 @@ const TYPE_CONFIG = {
   task_created:       { icon: FileText,    bg: 'bg-amber-50',  color: 'text-amber-600',  dot: 'bg-amber-400'   },
   task_completed:     { icon: CheckCircle2,bg: 'bg-emerald-50',color: 'text-emerald-600',dot: 'bg-emerald-400' },
   task_reopened:      { icon: RotateCcw,   bg: 'bg-gray-100',  color: 'text-gray-500',   dot: 'bg-gray-400'    },
-  // Legacy mock types (kept for backwards compatibility with dashboardData.js mock)
+  // analyticsService maps these legacy codes from older activity records
   deal_won:           { icon: Trophy,      bg: 'bg-emerald-50',color: 'text-emerald-600',dot: 'bg-emerald-400' },
-  lead_qualified:     { icon: UserCheck,   bg: 'bg-teal-50',   color: 'text-teal-600',   dot: 'bg-teal-400'    },
-  note_added:         { icon: FileText,    bg: 'bg-amber-50',  color: 'text-amber-600',  dot: 'bg-amber-400'   },
+  lead_new:           { icon: UserPlus,    bg: 'bg-indigo-50', color: 'text-indigo-600', dot: 'bg-indigo-400'  },
+  lead_moved:         { icon: UserCheck,   bg: 'bg-teal-50',   color: 'text-teal-600',   dot: 'bg-teal-400'    },
+  task_done:          { icon: CheckCircle2,bg: 'bg-emerald-50',color: 'text-emerald-600',dot: 'bg-emerald-400' },
+  meeting:            { icon: Calendar,    bg: 'bg-blue-50',   color: 'text-blue-600',   dot: 'bg-blue-400'    },
   deal_lost:          { icon: XCircle,     bg: 'bg-red-50',    color: 'text-red-500',    dot: 'bg-red-400'     },
-  follow_up:          { icon: Phone,       bg: 'bg-purple-50', color: 'text-purple-600', dot: 'bg-purple-400'  },
 }
 
 // ── Relative time helper ──────────────────────────────────────────────────────
@@ -47,7 +46,8 @@ function ActivityItem({ item, isLast }) {
   }
   const Icon = cfg.icon
 
-  // Normalise shape between real (activityService) and mock (dashboardData) records
+  // Normalise field names — activityService uses actor/occurredAt,
+  // analyticsService.getRecentActivity() remaps to user/time for this component
   const user    = item.actor  ?? item.user    ?? ''
   const action  = item.action ?? ''
   const subject = item.subject ?? ''
@@ -111,18 +111,12 @@ function LoadingSkeleton() {
 }
 
 // ── Public component ──────────────────────────────────────────────────────────
-export function ActivityTimeline({ isLoading: propLoading = false, maxItems = 7 }) {
-  const { data: liveActivities, isLoading: queryLoading } = useActivities(maxItems)
-
-  const isLoading = propLoading || queryLoading
-
+// Accepts real activity data as a prop from DashboardPage (via useDashboardActivity).
+// No internal data fetching, no mock fallback.
+export function ActivityTimeline({ data = [], isLoading = false, maxItems = 7 }) {
   if (isLoading) return <LoadingSkeleton />
 
-  // Use real activities when available; fall back to mock data when the
-  // activities table is empty or not yet set up
-  const items = (liveActivities && liveActivities.length > 0)
-    ? liveActivities.slice(0, maxItems)
-    : ACTIVITY_DATA.slice(0, maxItems)
+  const items = data.slice(0, maxItems)
 
   return (
     <div className="card p-5">
@@ -130,14 +124,20 @@ export function ActivityTimeline({ isLoading: propLoading = false, maxItems = 7 
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="font-display font-bold text-gray-900 text-base">Recent Activity</h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {liveActivities && liveActivities.length > 0 ? 'Live team updates' : 'Demo data'}
+          <p className="text-xs text-gray-400 mt-0.5">Live team updates</p>
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {items.length === 0 && (
+        <div className="py-6 text-center">
+          <Activity size={24} className="text-gray-200 mx-auto mb-2" />
+          <p className="text-xs text-gray-400">No activity yet</p>
+          <p className="text-[11px] text-gray-300 mt-0.5">
+            Events appear as leads, meetings, and tasks are created
           </p>
         </div>
-        <button className="text-xs text-teal-600 font-medium hover:text-teal-700 transition-colors">
-          View all
-        </button>
-      </div>
+      )}
 
       {/* Timeline */}
       <div>
