@@ -2,14 +2,10 @@ import React from 'react'
 import {
   X, Mail, Phone, Building2, Globe, MapPin,
   Tag, Pencil, Trash2, Calendar, TrendingUp, Link2,
-  Plus, Clock, CheckCircle2, XCircle, RefreshCw,
 } from 'lucide-react'
 import { useContactsStore }                 from '../../stores/contactsStore.js'
 import { useContact, useDeleteContact }     from '../../hooks/useContacts.js'
-import { useContactMeetings }               from '../../hooks/useMeetings.js'
-import { useMeetingsStore }                 from '../../stores/meetingsStore.js'
 import { TYPE_COLORS, STATUS_COLORS }       from '../../lib/contactsData.js'
-import { STATUS_CONFIG, formatMeetingDateTime } from '../../lib/meetingsData.js'
 import { useRoleByName }                    from '../../hooks/useTeam.js'
 import { Avatar }                           from '../ui/Avatar.jsx'
 import { Skeleton, SkeletonText }           from '../ui/Skeleton.jsx'
@@ -19,30 +15,12 @@ export function ContactDetailPanel() {
   const { detailPanelOpen, closeDetail, selectedContactId, openEditModal } = useContactsStore()
   const deleteMutation = useDeleteContact()
 
-  const { openAddModalWithPrefill: openMeetingWithPrefill, openDetail: openMeetingDetail } = useMeetingsStore()
-
   const { data: contact, isLoading } = useContact(
     detailPanelOpen ? selectedContactId : null
   )
 
-  const {
-    data: linkedMeetings = [],
-    isLoading: meetingsLoading,
-  } = useContactMeetings(detailPanelOpen ? selectedContactId : null)
-
   // Real role from public.profiles — replaces hardcoded "Account Owner"
   const assigneeRole = useRoleByName(contact?.assignee)
-
-  const handleScheduleMeeting = () => {
-    if (!contact) return
-    openMeetingWithPrefill({
-      relatedType:  'Contact',
-      relatedId:    contact.id,
-      relatedLabel: `${contact.name}${contact.company ? ' — ' + contact.company : ''}`,
-      title:        `Meeting — ${contact.name}`,
-      participants: contact.name ? [contact.name] : [],
-    })
-  }
 
   const handleDelete = () => {
     if (!contact) return
@@ -152,48 +130,6 @@ export function ContactDetailPanel() {
                 </div>
               </Section>
 
-              {/* Meetings */}
-              <Section
-                title="Meetings"
-                action={
-                  <button
-                    onClick={handleScheduleMeeting}
-                    className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
-                    title="Schedule a meeting for this contact"
-                  >
-                    <Plus size={12} /> Schedule
-                  </button>
-                }
-              >
-                {meetingsLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-14 w-full rounded-xl" />
-                    <Skeleton className="h-14 w-full rounded-xl" />
-                  </div>
-                ) : linkedMeetings.length === 0 ? (
-                  <div className="text-center py-4 px-3 bg-gray-50 rounded-xl">
-                    <Calendar size={18} className="text-gray-300 mx-auto mb-1.5" />
-                    <p className="text-xs text-gray-400">No meetings scheduled</p>
-                    <button
-                      onClick={handleScheduleMeeting}
-                      className="text-xs text-teal-600 hover:text-teal-700 font-medium mt-1 transition-colors"
-                    >
-                      Schedule one now
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {linkedMeetings.map((meeting) => (
-                      <MeetingCard
-                        key={meeting.id}
-                        meeting={meeting}
-                        onClick={() => openMeetingDetail(meeting.id)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </Section>
-
               {/* Timeline */}
               <Section title="Timeline">
                 <TimelinePanel
@@ -234,52 +170,14 @@ export function ContactDetailPanel() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function Section({ title, children, action }) {
+function Section({ title, children }) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-          {title}
-        </p>
-        {action}
-      </div>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
+        {title}
+      </p>
       <div className="space-y-1.5">{children}</div>
     </div>
-  )
-}
-
-function MeetingCard({ meeting, onClick }) {
-  const sc = STATUS_CONFIG[meeting.status] || STATUS_CONFIG['Scheduled']
-  const StatusIcon =
-    meeting.status === 'Completed'   ? CheckCircle2 :
-    meeting.status === 'Cancelled'   ? XCircle      :
-    meeting.status === 'Rescheduled' ? RefreshCw    :
-                                       Clock
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors duration-150 group"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold text-gray-900 leading-snug group-hover:text-teal-700 transition-colors truncate">
-          {meeting.title}
-        </p>
-        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${sc.color}`}>
-          <StatusIcon size={9} /> {sc.label}
-        </span>
-      </div>
-      <p className="text-[11px] text-gray-500 mt-1">
-        {meeting.scheduledDate
-          ? formatMeetingDateTime(meeting.scheduledDate, meeting.scheduledTime)
-          : 'No date set'}
-      </p>
-      {meeting.organizer && (
-        <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
-          <Avatar name={meeting.organizer} size="xs" />
-          {meeting.organizer}
-        </p>
-      )}
-    </button>
   )
 }
 

@@ -161,25 +161,6 @@ export function useLeadMeetings(leadId) {
   })
 }
 
-export function useContactMeetings(contactId) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-
-  return useQuery({
-    queryKey: meetingKeys.all(),
-    queryFn:  getMeetings,
-    staleTime: 1000 * 60 * 2,
-    enabled:   isAuthenticated && Boolean(contactId),
-    select: (meetings) =>
-      meetings
-        .filter((m) => m.relatedId === String(contactId) && m.relatedType === 'Contact')
-        .sort((a, b) => {
-          const at = `${a.scheduledDate || ''}T${a.scheduledTime || ''}`
-          const bt = `${b.scheduledDate || ''}T${b.scheduledTime || ''}`
-          return bt.localeCompare(at)
-        }),
-  })
-}
-
 // ── useDeleteMeeting ──────────────────────────────────────────────────────────
 export function useDeleteMeeting() {
   const qc = useQueryClient()
