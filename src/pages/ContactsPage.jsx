@@ -7,7 +7,8 @@ import { ContactsToolbar }        from '../components/contacts/ContactsToolbar.j
 import { ContactsTable }          from '../components/contacts/ContactsTable.jsx'
 import { ContactDetailPanel }     from '../components/contacts/ContactDetailPanel.jsx'
 import { ContactFormModal }        from '../components/contacts/ContactFormModal.jsx'
-import { MeetingFormModal } from '../components/meetings/MeetingFormModal.jsx'
+import { MeetingFormModal }        from '../components/meetings/MeetingFormModal.jsx'
+import { MeetingDetailPanel }      from '../components/meetings/MeetingDetailPanel.jsx'
 import { UnauthorizedState }      from '../components/ui/UnauthorizedState.jsx'
 
 export function ContactsPage() {
@@ -72,8 +73,11 @@ export function ContactsPage() {
       {/* Add / Edit modal */}
       <ContactFormModal />
 
-      {/* Meeting modal */}
+      {/* Meeting scheduling modal — opened from ContactDetailPanel */}
       <MeetingFormModal />
+
+      {/* Meeting detail panel — opened by clicking a meeting card */}
+      <MeetingDetailPanel />
     </>
   )
 }
