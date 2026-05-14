@@ -79,9 +79,10 @@ export function MeetingDetailPanel() {
           <PanelSkeleton onClose={closeDetail} />
         ) : !meeting ? null : (
           <MeetingPanelContent
-            meeting={meeting}
-            linkedTasks={linkedTasks}
-            tasksLoading={tasksLoading}
+  meeting={meeting}
+  organizerRole={organizerRole}
+  linkedTasks={linkedTasks}
+  tasksLoading={tasksLoading}
             onClose={closeDetail}
             onEdit={perms.canEdit ? () => openEditModal(meeting.id) : null}
             onDelete={perms.canDelete ? handleDelete : null}
@@ -95,7 +96,7 @@ export function MeetingDetailPanel() {
 }
 
 // ── Panel content ─────────────────────────────────────────────────────────────
-function MeetingPanelContent({ meeting, linkedTasks, tasksLoading, onClose, onEdit, onDelete, onCreateTask, onOpenTask }) {
+function MeetingPanelContent({meeting,organizerRole,linkedTasks,tasksLoading,onClose,onEdit,onDelete,onCreateTask,onOpenTask}) {
   const sc   = STATUS_CONFIG[meeting.status] || STATUS_CONFIG['Scheduled']
   const tc   = TYPE_CONFIG[meeting.type]     || { color: 'bg-gray-100 text-gray-600' }
   const days = daysFromToday(meeting.scheduledDate)

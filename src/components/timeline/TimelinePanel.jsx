@@ -161,7 +161,7 @@ function TimelineEvent({ event, isLast }) {
                     <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">{meta.nextActions}</p>
                   </div>
                 )}
-                {meta.attendees?.length > 0 && (
+                {Array.isArray(meta.attendees) && meta.attendees.length > 0 && (
                   <div>
                     <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wide mb-0.5">Attendees</p>
                     <p className="text-xs text-gray-600">{meta.attendees.join(', ')}</p>
