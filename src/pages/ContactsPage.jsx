@@ -9,6 +9,8 @@ import { ContactDetailPanel }     from '../components/contacts/ContactDetailPane
 import { ContactFormModal }        from '../components/contacts/ContactFormModal.jsx'
 import { MeetingFormModal }        from '../components/meetings/MeetingFormModal.jsx'
 import { MeetingDetailPanel }      from '../components/meetings/MeetingDetailPanel.jsx'
+import { TaskFormModal }           from '../components/tasks/TaskFormModal.jsx'
+import { TaskDetailPanel }         from '../components/tasks/TaskDetailPanel.jsx'
 import { UnauthorizedState }      from '../components/ui/UnauthorizedState.jsx'
 
 export function ContactsPage() {
@@ -78,6 +80,12 @@ export function ContactsPage() {
 
       {/* Meeting detail panel — opened by clicking a meeting card */}
       <MeetingDetailPanel />
+
+      {/* Task creation modal — opened from ContactDetailPanel */}
+      <TaskFormModal />
+
+      {/* Task detail panel — opened by clicking a task card */}
+      <TaskDetailPanel />
     </>
   )
 }
