@@ -14,6 +14,7 @@ import {
   updateUserDepartment,
   setUserActive,
   updateUserName,
+  createWorkspaceUser,
 } from '../services/userManagementService.js'
 import { teamKeys } from './useTeam.js'
 
@@ -88,4 +89,28 @@ export function useSetUserActive() {
 
 export function useUpdateUserName() {
   return usePatchUser(({ id, name }) => updateUserName(id, name))
+}
+
+// ── useCreateUser ─────────────────────────────────────────────────────────────
+// Creates a new auth user + profile, then prepends them to both workspace
+// and team caches so they appear immediately everywhere.
+export function useCreateUser() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload) => createWorkspaceUser(payload),
+    onSuccess: (newUser) => {
+      if (!newUser) return
+      // Prepend to workspace cache
+      qc.setQueryData(userMgmtKeys.workspace(), (old = []) => {
+        const without = old.filter((u) => u.id !== newUser.id)
+        return [newUser, ...without]
+      })
+    },
+    onSettled: () => {
+      // Full re-fetch so both caches are consistent
+      qc.invalidateQueries({ queryKey: userMgmtKeys.workspace() })
+      qc.invalidateQueries({ queryKey: teamKeys.members() })
+    },
+  })
 }

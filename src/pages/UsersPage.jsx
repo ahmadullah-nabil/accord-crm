@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { UserCog, RefreshCw, Users, ShieldCheck, UserCheck, UserX } from 'lucide-react'
+import { UserCog, RefreshCw, UserPlus } from 'lucide-react'
 import { useWorkspaceUsers, useSetUserActive } from '../hooks/useUserManagement.js'
-import { UsersTable }    from '../components/users/UsersTable.jsx'
-import { UserEditModal } from '../components/users/UserEditModal.jsx'
-import { ROLES }         from '../lib/users.js'
+import { UsersTable }      from '../components/users/UsersTable.jsx'
+import { UserEditModal }   from '../components/users/UserEditModal.jsx'
+import { UserCreateModal } from '../components/users/UserCreateModal.jsx'
+import { ROLES }           from '../lib/users.js'
 
 // ── Summary cards ─────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color = 'teal' }) {
@@ -28,7 +29,8 @@ export function UsersPage() {
   const { data: users = [], isLoading, isError, refetch } = useWorkspaceUsers()
   const setActiveMutation = useSetUserActive()
 
-  const [editingUser, setEditingUser] = useState(null)
+  const [editingUser,  setEditingUser]  = useState(null)
+  const [showCreate,   setShowCreate]   = useState(false)
   const [filter,      setFilter]      = useState('all')   // 'all' | 'active' | 'inactive'
   const [roleFilter,  setRoleFilter]  = useState('All')
 
@@ -136,6 +138,13 @@ export function UsersPage() {
           <span className="text-xs text-gray-400 ml-auto">
             {visible.length} of {total} members
           </span>
+
+          <button
+            onClick={() => setShowCreate(true)}
+            className="btn-primary text-sm flex items-center gap-1.5"
+          >
+            <UserPlus size={14} /> Add User
+          </button>
         </div>
 
         {/* Users table */}
@@ -154,6 +163,11 @@ export function UsersPage() {
           allUsers={users}
           onClose={() => setEditingUser(null)}
         />
+      )}
+
+      {/* Create user modal */}
+      {showCreate && (
+        <UserCreateModal onClose={() => setShowCreate(false)} />
       )}
     </>
   )

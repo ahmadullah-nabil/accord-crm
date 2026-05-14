@@ -168,26 +168,46 @@ function UserRow({ user, allUsers, onEdit, onToggleActive }) {
 }
 
 function RowMenu({ onEdit, onToggle, isActive, onClose }) {
+  const menuRef = React.useRef(null)
+
   React.useEffect(() => {
-    const h = () => onClose()
-    document.addEventListener('click', h, true)
-    return () => document.removeEventListener('click', h, true)
+    const h = (e) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target)
+      ) {
+        onClose()
+      }
+    }
+
+    document.addEventListener('mousedown', h)
+
+    return () =>
+      document.removeEventListener('mousedown', h)
   }, [onClose])
 
   return (
-    <div className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-card-lg border border-gray-100 py-1 min-w-[160px] animate-fade-in">
+    <div
+      ref={menuRef}
+      className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-card-lg border border-gray-100 py-1 min-w-[160px] animate-fade-in"
+    >
       <button
         onClick={onEdit}
         className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
       >
         <Pencil size={13} /> Edit user
       </button>
+
       <button
         onClick={onToggle}
         className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium
-          ${isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+          ${isActive
+            ? 'text-amber-600 hover:bg-amber-50'
+            : 'text-emerald-600 hover:bg-emerald-50'}`}
       >
-        {isActive ? <><UserX size={13} /> Deactivate</> : <><UserCheck size={13} /> Activate</>}
+        {isActive
+          ? <><UserX size={13} /> Deactivate</>
+          : <><UserCheck size={13} /> Activate</>}
       </button>
     </div>
   )
