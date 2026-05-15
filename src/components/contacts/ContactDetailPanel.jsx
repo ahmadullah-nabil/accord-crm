@@ -307,6 +307,8 @@ export function ContactDetailPanel() {
                   entityType="contact"
                   entityId={contact.id}
                   entityLabel={contact.name}
+                  linkedEntityType={contact.linkedLeadId ? 'lead' : null}
+                  linkedEntityId={contact.linkedLeadId ?? null}
                 />
               </Section>
 

@@ -184,10 +184,21 @@ const BASE_TABS = [
 const MEETING_TAB = { id: 'meeting_notes', label: 'Meeting Notes', icon: Users }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function TimelinePanel({ entityType, entityId, entityLabel = '' }) {
+export function TimelinePanel({
+  entityType,
+  entityId,
+  entityLabel      = '',
+  linkedEntityType = null,
+  linkedEntityId   = null,
+}) {
   const [activeTab, setActiveTab] = useState(null)
 
-  const { data: events = [], isLoading } = useTimeline(entityType, entityId)
+  const { data: events = [], isLoading } = useTimeline(
+    entityType,
+    entityId,
+    linkedEntityType,
+    linkedEntityId,
+  )
 
   const tabs = entityType === 'meeting'
     ? [...BASE_TABS, MEETING_TAB]

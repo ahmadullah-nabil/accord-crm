@@ -60,11 +60,18 @@ function toApp(row) {
 
 /**
  * Full chronological timeline for an entity.
- * Merges all activity types: system events, notes, follow-ups, meeting notes.
- * Returns newest-first (UI reverses if needed).
+ * When linkedEntityType + linkedEntityId are provided (e.g. a lead converted
+ * from a contact), fetches both entities in parallel and merges newest-first.
+ * No data is copied or moved — both sets of rows stay where they were written.
  */
-export async function getTimelineForEntity(entityType, entityId, limit = 50) {
-  const { data, error } = await supabase
+export async function getTimelineForEntity(
+  entityType,
+  entityId,
+  limit = 50,
+  linkedEntityType = null,
+  linkedEntityId   = null,
+) {
+  const primary = supabase
     .from('activities')
     .select('*')
     .eq('entity_type', entityType)
@@ -72,8 +79,32 @@ export async function getTimelineForEntity(entityType, entityId, limit = 50) {
     .order('occurred_at', { ascending: false })
     .limit(limit)
 
+  const linked = (linkedEntityType && linkedEntityId)
+    ? supabase
+        .from('activities')
+        .select('*')
+        .eq('entity_type', linkedEntityType)
+        .eq('entity_id', String(linkedEntityId))
+        .order('occurred_at', { ascending: false })
+        .limit(limit)
+    : Promise.resolve({ data: [] })
+
+  const [{ data: primaryRows, error }, { data: linkedRows }] =
+    await Promise.all([primary, linked])
+
   if (error) throwClassified(error)
-  return (data ?? []).map(toApp)
+
+  const all = [
+    ...(primaryRows ?? []),
+    ...(linkedRows  ?? []),
+  ]
+
+  // Merge sort newest-first, deduplicate by id, cap at limit
+  return all
+    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
+    .filter((row, i, arr) => arr.findIndex((r) => r.id === row.id) === i)
+    .slice(0, limit)
+    .map(toApp)
 }
 
 /**

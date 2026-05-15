@@ -337,6 +337,8 @@ export function LeadDetailPanel() {
                 entityType="lead"
                 entityId={selectedLeadId}
                 entityLabel={lead?.company || lead?.name || ''}
+                linkedEntityType={lead.contactId ? 'contact' : null}
+                linkedEntityId={lead.contactId ?? null}
               />
             </div>
           </>

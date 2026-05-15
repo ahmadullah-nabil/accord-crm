@@ -23,7 +23,8 @@ import {
 
 // ── Query keys ────────────────────────────────────────────────────────────────
 export const timelineKeys = {
-  entity:   (type, id) => ['timeline', type, id],
+  // linkedId is null for non-converted entities — distinct cache entries
+  entity:   (type, id, linkedId = null) => ['timeline', type, id, linkedId],
   notes:    (type, id) => ['timeline', 'notes', type, id],
   followups:(type, id) => ['timeline', 'followups', type, id],
 }
@@ -32,12 +33,27 @@ const STALE = 1000 * 60  // 60s — append-only data stays fresh long
 
 // ── Read hooks ────────────────────────────────────────────────────────────────
 
-/** Full chronological timeline for any entity */
-export function useTimeline(entityType, entityId) {
+/**
+ * Full chronological timeline for any entity.
+ * Pass linkedEntityType + linkedEntityId to merge a related entity's history
+ * (e.g. lead + its originating contact after conversion).
+ */
+export function useTimeline(
+  entityType,
+  entityId,
+  linkedEntityType = null,
+  linkedEntityId   = null,
+) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   return useQuery({
-    queryKey: timelineKeys.entity(entityType, entityId),
-    queryFn:  () => getTimelineForEntity(entityType, entityId),
+    queryKey: timelineKeys.entity(entityType, entityId, linkedEntityId ?? null),
+    queryFn:  () => getTimelineForEntity(
+      entityType,
+      entityId,
+      50,
+      linkedEntityType,
+      linkedEntityId,
+    ),
     enabled:  isAuthenticated && Boolean(entityType) && Boolean(entityId),
     staleTime: STALE,
     placeholderData: [],
