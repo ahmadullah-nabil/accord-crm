@@ -181,6 +181,52 @@ export function useMeetingTasks(meetingId) {
   })
 }
 
+export function useContactTasks(contactId) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  return useQuery({
+    queryKey: taskKeys.all(),
+    queryFn:  getTasks,
+    staleTime: 1000 * 60 * 2,
+    enabled:   isAuthenticated && Boolean(contactId),
+    select: (tasks) =>
+      tasks
+        .filter(
+          (t) =>
+            t.relatedId === String(contactId) &&
+            t.relatedType === 'Contact',
+        )
+        .sort((a, b) => {
+          if (!a.dueDate) return 1
+          if (!b.dueDate) return -1
+          return a.dueDate.localeCompare(b.dueDate)
+        }),
+  })
+}
+
+export function useLeadTasks(leadId) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  return useQuery({
+    queryKey: taskKeys.all(),
+    queryFn:  getTasks,
+    staleTime: 1000 * 60 * 2,
+    enabled:   isAuthenticated && Boolean(leadId),
+    select: (tasks) =>
+      tasks
+        .filter(
+          (t) =>
+            t.relatedId === String(leadId) &&
+            t.relatedType === 'Lead',
+        )
+        .sort((a, b) => {
+          if (!a.dueDate) return 1
+          if (!b.dueDate) return -1
+          return a.dueDate.localeCompare(b.dueDate)
+        }),
+  })
+}
+
 // ── useToggleTaskComplete ──────────────────────────────────────────────────────
 // Toggles status between 'Completed' and 'Todo'.
 // completedAt is handled server-side by the service's toDb() mapper.

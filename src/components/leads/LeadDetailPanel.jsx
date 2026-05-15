@@ -4,14 +4,18 @@ import {
   DollarSign, TrendingUp, Pencil, Trash2, Globe,
   Plus, Clock, CheckCircle2, XCircle, RefreshCw,
   Activity, UserPlus, ArrowRight, FileText, RotateCcw,
+  AlertCircle, Circle,
 } from 'lucide-react'
 import { useLeadsStore, STAGE_COLORS, PRIORITY_COLORS } from '../../stores/leadsStore.js'
 import { useMeetingsStore }        from '../../stores/meetingsStore.js'
 import { useOpportunitiesStore }   from '../../stores/opportunitiesStore.js'
+import { useTasksStore }           from '../../stores/tasksStore.js'
 import { useLeadMeetings }         from '../../hooks/useMeetings.js'
+import { useLeadTasks }            from '../../hooks/useTasks.js'
 import { useLeadPermissions }      from '../../hooks/usePermissions.js'
 import { useRoleByName }           from '../../hooks/useTeam.js'
 import { STATUS_CONFIG, formatMeetingDateTime } from '../../lib/meetingsData.js'
+import { STATUS_CONFIG as TASK_STATUS_CONFIG }  from '../../lib/tasksData.js'
 import { TimelinePanel }           from '../timeline/TimelinePanel.jsx'
 import { Avatar }                  from '../ui/Avatar.jsx'
 import { Skeleton }                from '../ui/Skeleton.jsx'
@@ -31,6 +35,7 @@ export function LeadDetailPanel() {
 
   const { openAddModalWithPrefill: openMeetingWithPrefill, openDetail: openMeetingDetail } = useMeetingsStore()
   const { openAddModalWithPrefill: openOppWithPrefill } = useOpportunitiesStore()
+  const { openAddModalWithPrefill: openTaskWithPrefill, openDetail: openTaskDetail } = useTasksStore()
 
   const lead = getSelectedLead()
 
@@ -45,6 +50,11 @@ export function LeadDetailPanel() {
     data: linkedMeetings = [],
     isLoading: meetingsLoading,
   } = useLeadMeetings(detailPanelOpen ? selectedLeadId : null)
+
+  const {
+    data: linkedTasks = [],
+    isLoading: tasksLoading,
+  } = useLeadTasks(detailPanelOpen ? selectedLeadId : null)
 
 
 
@@ -62,6 +72,17 @@ export function LeadDetailPanel() {
       relatedLabel: `${lead.name} — ${lead.company}`,
       title:        `Meeting — ${lead.company}`,
       participants: lead.name ? [lead.name] : [],
+    })
+  }
+
+  const handleCreateTask = () => {
+    if (!lead) return
+    openTaskWithPrefill({
+      relatedType:  'Lead',
+      relatedId:    lead.id,
+      relatedLabel: `${lead.name} — ${lead.company}`,
+      title:        `Follow-up: ${lead.company}`,
+      assignee:     lead.assignee ?? '',
     })
   }
 
@@ -161,6 +182,22 @@ export function LeadDetailPanel() {
                 <span className="ml-auto font-mono font-bold text-gray-900 text-lg">{fmt(lead.value)}</span>
               </div>
 
+              {/* Origin Contact — shown when this lead was converted from a contact */}
+              {lead.contactId && (
+                <Section title="Origin Contact">
+                  <div className="flex items-center gap-2 p-2.5 bg-teal-50 border border-teal-100 rounded-xl">
+                    <Avatar name={lead.name} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-teal-800 truncate">{lead.name}</p>
+                      <p className="text-[11px] text-teal-600 truncate">{lead.company}</p>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-teal-100 text-teal-700 rounded-full flex-shrink-0">
+                      Converted
+                    </span>
+                  </div>
+                </Section>
+              )}
+
               {/* Contact info */}
               <Section title="Contact">
                 <InfoRow icon={Mail} label="Email" value={lead.email} href={`mailto:${lead.email}`} />
@@ -256,6 +293,45 @@ export function LeadDetailPanel() {
                 )}
               </Section>
 
+              {/* ── Tasks ────────────────────────────────────────────────────── */}
+              <Section
+                title="Tasks"
+                action={
+                  <button
+                    onClick={handleCreateTask}
+                    className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+                    title="Create a task for this lead"
+                  >
+                    <Plus size={12} /> Add task
+                  </button>
+                }
+              >
+                {tasksLoading ? (
+                  <Skeleton className="h-14 w-full rounded-xl" />
+                ) : linkedTasks.length === 0 ? (
+                  <div className="text-center py-4 px-3 bg-gray-50 rounded-xl">
+                    <CheckCircle2 size={18} className="text-gray-300 mx-auto mb-1.5" />
+                    <p className="text-xs text-gray-400">No tasks yet</p>
+                    <button
+                      onClick={handleCreateTask}
+                      className="text-xs text-teal-600 hover:text-teal-700 font-medium mt-1 transition-colors"
+                    >
+                      Add one now
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {linkedTasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        onClick={() => openTaskDetail(task.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Section>
+
               {/* ── Unified Timeline ─────────────────────────────────────────── */}
               <TimelinePanel
                 entityType="lead"
@@ -297,6 +373,41 @@ function ActivityEntry({ event, isLast }) {
         <p className="text-[10px] text-gray-300 mt-0.5">{relativeTime(event.occurredAt)}</p>
       </div>
     </div>
+  )
+}
+
+// ── Related task card ─────────────────────────────────────────────────────────
+function TaskCard({ task, onClick }) {
+  const sc = TASK_STATUS_CONFIG[task.status] || TASK_STATUS_CONFIG['Todo']
+  const StatusIcon =
+    task.status === 'Completed' ? CheckCircle2 :
+    task.status === 'Overdue'   ? AlertCircle  :
+                                   Circle
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors duration-150 group"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold text-gray-900 leading-snug group-hover:text-teal-700 transition-colors truncate">
+          {task.title}
+        </p>
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${sc.color}`}>
+          <StatusIcon size={9} /> {sc.label}
+        </span>
+      </div>
+      {task.dueDate && (
+        <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+          <Clock size={10} /> Due {task.dueDate}
+        </p>
+      )}
+      {task.assignee && (
+        <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+          <Avatar name={task.assignee} size="xs" />
+          {task.assignee.split(' ')[0]}
+        </p>
+      )}
+    </button>
   )
 }
 

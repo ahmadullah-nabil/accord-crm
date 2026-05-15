@@ -45,6 +45,7 @@ function toApp(row) {
     // Ownership fields (nullable — not present on rows created before the patch)
     createdBy:    row.created_by    ?? '',
     ownerId:      row.owner_id      ?? null,
+    contactId:    row.contact_id    ?? null,   // UUID of originating contact (if converted)
   }
 }
 
@@ -65,8 +66,9 @@ function toDb(payload) {
     row.tags = Array.isArray(payload.tags) ? payload.tags : []
   }
   // Ownership fields — only written on insert, never on update
-  if (payload.createdBy !== undefined) row.created_by = payload.createdBy ?? ''
-  if (payload.ownerId   !== undefined) row.owner_id   = payload.ownerId   ?? null
+  if (payload.createdBy  !== undefined) row.created_by  = payload.createdBy  ?? ''
+  if (payload.ownerId    !== undefined) row.owner_id    = payload.ownerId    ?? null
+  if (payload.contactId  !== undefined) row.contact_id  = payload.contactId  ?? null
   return row
 }
 
@@ -162,4 +164,68 @@ export async function removeLead(id) {
 
   if (error) throwClassified(error)
   return { id }
+}
+
+// ── Contact → Lead conversion ─────────────────────────────────────────────────
+
+/**
+ * Convert a Contact into a Lead.
+ *
+ * Steps:
+ *   1. Insert a new Lead row pre-populated from the contact, with contact_id set
+ *   2. Patch the contact's linked_lead_id to point at the new lead
+ *
+ * Returns the new Lead (toApp shape).
+ * Throws if the contact is already converted (linked_lead_id is set).
+ *
+ * @param {object} contact   — contactsService.toApp() shape
+ * @param {object} user      — authStore.user (for ownership stamp)
+ */
+export async function convertContactToLead(contact, user) {
+  if (contact.linkedLeadId) {
+    throw new Error('This contact has already been converted to a lead.')
+  }
+
+  const today = new Date().toISOString().split('T')[0]
+
+  // Step 1 — insert lead
+  const { data: leadRow, error: leadErr } = await supabase
+    .from('leads')
+    .insert({
+      name:          contact.name,
+      company:       contact.company  ?? '',
+      email:         contact.email    ?? '',
+      phone:         contact.phone    ?? '',
+      stage:         'New',
+      priority:      'Medium',
+      source:        '',
+      assignee:      contact.assignee ?? '',
+      notes:         contact.notes    ?? '',
+      tags:          [],
+      value:         0,
+      contact_id:    contact.id,
+      created_by:    user?.name       ?? '',
+      owner_id:      user?.id         ?? null,
+      created_at:    today,
+      last_activity: today,
+    })
+    .select()
+    .single()
+
+  if (leadErr) throwClassified(leadErr)
+  const newLead = toApp(leadRow)
+
+  // Step 2 — link the contact back to this lead
+  const { error: contactErr } = await supabase
+    .from('contacts')
+    .update({ linked_lead_id: newLead.id })
+    .eq('id', contact.id)
+
+  if (contactErr) {
+    // Lead was created — log the patch failure but don't throw.
+    // The lead exists; the contact link can be repaired manually.
+    console.error('[leadsService] convertContactToLead: failed to set linked_lead_id', contactErr.message)
+  }
+
+  return newLead
 }
